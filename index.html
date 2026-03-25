@@ -1017,6 +1017,26 @@
                     <strong id="maskedCount">0</strong>
                     <small>方便判断当前练习难度。</small>
                 </div>
+                <div class="metric">
+                    <span class="metric-label">总字符数</span>
+                    <strong id="totalCharCount">0</strong>
+                    <small>包含中文、标点、空格和换行。</small>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">当前可见中文</span>
+                    <strong id="visibleCount">0</strong>
+                    <small>还保留在结果里的中文字符数量。</small>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">实际遮挡比例</span>
+                    <strong id="maskedRate">0%</strong>
+                    <small>按照当前结果即时计算。</small>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">当前规则</span>
+                    <strong id="patternStatus">固定间隔</strong>
+                    <small>显示当前生效的遮挡方式。</small>
+                </div>
             </div>
         </section>
 
@@ -1169,6 +1189,10 @@ const offsetStatus = document.getElementById("offsetStatus");
 const variantStatus = document.getElementById("variantStatus");
 const chineseCount = document.getElementById("chineseCount");
 const maskedCount = document.getElementById("maskedCount");
+const totalCharCount = document.getElementById("totalCharCount");
+const visibleCount = document.getElementById("visibleCount");
+const maskedRate = document.getElementById("maskedRate");
+const patternStatus = document.getElementById("patternStatus");
 const outputHint = document.getElementById("outputHint");
 const topbarSummary = document.getElementById("topbarSummary");
 const toast = document.getElementById("toast");
@@ -1224,6 +1248,9 @@ function updateIntervalButtons() {
 function updateStatus(totalChinese, maskedChinese) {
     const cycleStats = getMaskCycleStats();
     const variantTotal = cycleStats.total;
+    const totalChars = Array.from(inputText.value).length;
+    const visibleChinese = Math.max(totalChinese - maskedChinese, 0);
+    const ratio = totalChinese === 0 ? 0 : Math.round((maskedChinese / totalChinese) * 100);
     intervalStatus.innerText = String(currentInterval);
     offsetStatus.innerText = maskPattern === "random" ? "随机版" : `${offset} / ${Math.max(variantTotal - 1, 0)}`;
     variantStatus.innerText = maskPattern === "interval"
@@ -1235,10 +1262,14 @@ function updateStatus(totalChinese, maskedChinese) {
                 : "句子模式";
     chineseCount.innerText = String(totalChinese);
     maskedCount.innerText = String(maskedChinese);
+    totalCharCount.innerText = String(totalChars);
+    visibleCount.innerText = String(visibleChinese);
+    maskedRate.innerText = `${ratio}%`;
+    patternStatus.innerText = getMaskPatternLabel();
     topbarSummary.innerText = `${getMaskPatternLabel()} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken} · ${previewMode === "masked" ? "遮挡" : "原文"}`;
     outputHint.innerText = totalChinese === 0
         ? "当前内容里没有检测到中文字符，因此不会出现遮挡效果。"
-        : `当前方案会遮挡 ${maskedChinese} 个中文字符，规则为${getMaskPatternLabel()}，替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
+        : `当前方案会遮挡 ${maskedChinese} 个中文字符，占中文总量的 ${ratio}%，规则为${getMaskPatternLabel()}，替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
     maskTokenPreview.innerText = maskToken === " " ? "空格" : maskToken;
     floatingToggleBtn.innerText = previewMode === "masked" ? "查看原文" : "查看遮挡";
     rerollRandomBtn.classList.toggle("hidden", maskPattern !== "random");

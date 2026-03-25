@@ -414,6 +414,75 @@
         font-size: 0.98rem;
     }
 
+    .history-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .history-empty {
+        margin: 14px 0 0;
+        padding: 14px 16px;
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.58);
+        border: 1px dashed rgba(35, 88, 67, 0.18);
+        color: var(--muted);
+        line-height: 1.65;
+    }
+
+    .history-item {
+        padding: 14px 16px;
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(35, 88, 67, 0.08);
+    }
+
+    .history-item-head,
+    .history-item-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .history-item-head strong {
+        font-size: 0.96rem;
+        line-height: 1.4;
+    }
+
+    .history-item-head time,
+    .history-item small {
+        color: var(--muted);
+    }
+
+    .history-item small {
+        display: block;
+        margin-top: 8px;
+        line-height: 1.65;
+    }
+
+    .history-item-actions {
+        margin-top: 12px;
+    }
+
+    .history-btn {
+        cursor: pointer;
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(35, 88, 67, 0.12);
+        background: rgba(35, 88, 67, 0.08);
+        color: var(--accent-deep);
+        font-weight: 600;
+    }
+
+    .history-btn.restore {
+        background: linear-gradient(135deg, var(--accent) 0%, #3a7b5f 100%);
+        border-color: transparent;
+        color: #fff9f2;
+        box-shadow: 0 12px 24px rgba(35, 88, 67, 0.18);
+    }
+
     .page {
         width: min(1280px, calc(100% - 24px));
         margin: 0 auto;
@@ -968,6 +1037,13 @@
                 </div>
             </div>
         </section>
+
+        <section class="nav-panel">
+            <h3 style="font-size: 1.1rem;">最近历史</h3>
+            <p style="margin-top: 10px;">把当前文本和参数存成快照，之后可以一键恢复继续练。</p>
+            <div class="history-list" id="historyList"></div>
+            <p class="history-empty" id="historyEmpty">现在还没有保存的历史记录。点一下“存入历史”后，最近几次练习会出现在这里。</p>
+        </section>
     </div>
 </aside>
 
@@ -1055,6 +1131,7 @@
                             <button class="action-btn primary" type="button" id="copyBtn">复制结果</button>
                             <button class="action-btn" type="button" id="exportCurrentBtn">导出当前</button>
                             <button class="action-btn" type="button" id="exportAllBtn">导出全部形态</button>
+                            <button class="action-btn" type="button" id="saveHistoryBtn">存入历史</button>
                         </div>
                         <label class="toggle-option" for="floatingToggleEnabled">
                             <input type="checkbox" id="floatingToggleEnabled">
@@ -1081,6 +1158,8 @@ let previewMode = "masked";
 let maskPattern = "interval";
 let randomSeed = Date.now();
 let maskRatio = 0.5;
+const HISTORY_LIMIT = 6;
+const HISTORY_STORAGE_KEY = "text-mask-history-v1";
 
 const inputText = document.getElementById("inputText");
 const outputText = document.getElementById("outputText");
@@ -1106,7 +1185,10 @@ const maskRatioValue = document.getElementById("maskRatioValue");
 const rerollRandomBtn = document.getElementById("rerollRandomBtn");
 const floatingToggleEnabled = document.getElementById("floatingToggleEnabled");
 const floatingToggleBtn = document.getElementById("floatingToggleBtn");
+const historyList = document.getElementById("historyList");
+const historyEmpty = document.getElementById("historyEmpty");
 const intervalButtons = Array.from(document.querySelectorAll(".interval-btn"));
+let historyEntries = [];
 
 function isChinese(char) {
     return /[\u4e00-\u9fa5]/.test(char);
@@ -1184,6 +1266,170 @@ function updateMaskPattern() {
 
 function updateMaskRatio() {
     maskRatio = Number(maskRatioRange.value) / 100;
+}
+
+function readStorage(key, fallbackValue) {
+    try {
+        if (!window.localStorage) {
+            return fallbackValue;
+        }
+        const raw = window.localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallbackValue;
+    } catch (error) {
+        return fallbackValue;
+    }
+}
+
+function writeStorage(key, value) {
+    try {
+        if (!window.localStorage) {
+            return false;
+        }
+        window.localStorage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+function formatHistoryTime(timestamp) {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+        return "刚刚";
+    }
+    return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function buildHistoryEntry() {
+    return {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        createdAt: Date.now(),
+        text: inputText.value,
+        currentInterval,
+        offset,
+        maskTokenSelectValue: maskTokenSelect.value,
+        customMaskInputValue: customMaskInput.value,
+        maskPatternSelectValue: maskPatternSelect.value,
+        maskRatioRangeValue: maskRatioRange.value,
+        floatingToggleEnabled: floatingToggleEnabled.checked,
+        previewMode
+    };
+}
+
+function getHistorySummary(entry) {
+    const maskLabel = entry.maskTokenSelectValue === "__custom__"
+        ? entry.customMaskInputValue || "⬛"
+        : entry.maskTokenSelectValue === " "
+            ? "空格"
+            : entry.maskTokenSelectValue;
+    const textLength = Array.from(entry.text || "").filter(isChinese).length;
+    return `${entry.maskPatternSelectValue} · 间隔 ${entry.currentInterval} · ${entry.maskRatioRangeValue}% · ${maskLabel} · ${textLength} 个中文字符`;
+}
+
+function renderHistoryList() {
+    historyList.innerHTML = "";
+    const hasEntries = historyEntries.length > 0;
+    historyEmpty.classList.toggle("hidden", hasEntries);
+
+    historyEntries.forEach((entry, index) => {
+        const item = document.createElement("article");
+        item.className = "history-item";
+        item.innerHTML = `
+            <div class="history-item-head">
+                <strong>练习 ${historyEntries.length - index}</strong>
+                <time>${formatHistoryTime(entry.createdAt)}</time>
+            </div>
+            <small>${getHistorySummary(entry)}</small>
+            <div class="history-item-actions">
+                <button class="history-btn restore" type="button" data-history-restore="${entry.id}">恢复</button>
+                <button class="history-btn" type="button" data-history-remove="${entry.id}">删除</button>
+            </div>
+        `;
+        historyList.appendChild(item);
+    });
+}
+
+function persistHistoryEntries() {
+    return writeStorage(HISTORY_STORAGE_KEY, historyEntries);
+}
+
+function loadHistoryEntries() {
+    const storedEntries = readStorage(HISTORY_STORAGE_KEY, []);
+    historyEntries = Array.isArray(storedEntries)
+        ? storedEntries.filter((entry) => entry && typeof entry.text === "string").slice(0, HISTORY_LIMIT)
+        : [];
+    renderHistoryList();
+}
+
+function saveCurrentToHistory() {
+    const trimmedText = inputText.value.trim();
+    if (!trimmedText) {
+        showToast("当前输入为空，先写点内容再保存历史。");
+        return;
+    }
+
+    const nextEntry = buildHistoryEntry();
+    const latestEntry = historyEntries[0];
+    const isSameAsLatest = latestEntry
+        && latestEntry.text === nextEntry.text
+        && latestEntry.currentInterval === nextEntry.currentInterval
+        && latestEntry.offset === nextEntry.offset
+        && latestEntry.maskTokenSelectValue === nextEntry.maskTokenSelectValue
+        && latestEntry.customMaskInputValue === nextEntry.customMaskInputValue
+        && latestEntry.maskPatternSelectValue === nextEntry.maskPatternSelectValue
+        && latestEntry.maskRatioRangeValue === nextEntry.maskRatioRangeValue
+        && latestEntry.floatingToggleEnabled === nextEntry.floatingToggleEnabled
+        && latestEntry.previewMode === nextEntry.previewMode;
+
+    historyEntries = isSameAsLatest
+        ? [nextEntry, ...historyEntries.slice(1)]
+        : [nextEntry, ...historyEntries].slice(0, HISTORY_LIMIT);
+
+    if (!persistHistoryEntries()) {
+        showToast("历史记录保存失败，浏览器可能禁用了本地存储。");
+        return;
+    }
+
+    renderHistoryList();
+    showToast(isSameAsLatest ? "已刷新最近一条历史记录。" : "当前练习已存入历史。");
+}
+
+function applyHistoryEntry(entry) {
+    inputText.value = entry.text || "";
+    currentInterval = Number(entry.currentInterval) || 1;
+    offset = Number(entry.offset) || 0;
+    maskTokenSelect.value = entry.maskTokenSelectValue || "⬛";
+    customMaskInput.value = entry.customMaskInputValue || "";
+    maskPatternSelect.value = entry.maskPatternSelectValue || "interval";
+    maskRatioRange.value = entry.maskRatioRangeValue || "50";
+    floatingToggleEnabled.checked = Boolean(entry.floatingToggleEnabled);
+    previewMode = entry.previewMode === "original" ? "original" : "masked";
+    updateMaskToken();
+    updateMaskPattern();
+    updateMaskRatio();
+    updateFloatingToggleVisibility();
+    processText();
+}
+
+function restoreHistoryEntry(id) {
+    const matchedEntry = historyEntries.find((entry) => entry.id === id);
+    if (!matchedEntry) {
+        showToast("这条历史记录已经不存在了。");
+        return;
+    }
+    applyHistoryEntry(matchedEntry);
+    showToast("已恢复这条历史记录。");
+}
+
+function removeHistoryEntry(id) {
+    const nextEntries = historyEntries.filter((entry) => entry.id !== id);
+    if (nextEntries.length === historyEntries.length) {
+        return;
+    }
+    historyEntries = nextEntries;
+    persistHistoryEntries();
+    renderHistoryList();
+    showToast("这条历史记录已删除。");
 }
 
 function getMaskPatternLabel() {
@@ -1577,8 +1823,21 @@ document.addEventListener("keydown", (event) => {
 document.getElementById("copyBtn").addEventListener("click", copyResult);
 document.getElementById("exportCurrentBtn").addEventListener("click", () => exportTXT(false));
 document.getElementById("exportAllBtn").addEventListener("click", () => exportTXT(true));
+document.getElementById("saveHistoryBtn").addEventListener("click", saveCurrentToHistory);
+historyList.addEventListener("click", (event) => {
+    const restoreId = event.target.dataset.historyRestore;
+    const removeId = event.target.dataset.historyRemove;
+
+    if (restoreId) {
+        restoreHistoryEntry(restoreId);
+    }
+    if (removeId) {
+        removeHistoryEntry(removeId);
+    }
+});
 inputText.addEventListener("input", processText);
 
+loadHistoryEntries();
 updateMaskToken();
 updateMaskPattern();
 updateMaskRatio();

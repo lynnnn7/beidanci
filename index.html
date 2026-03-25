@@ -989,8 +989,10 @@
                             <select class="control-select" id="maskPatternSelect">
                                 <option value="interval">固定间隔</option>
                                 <option value="random">随机遮挡</option>
+                                <option value="word">词组遮挡</option>
+                                <option value="sentence">句子遮挡</option>
                             </select>
-                            <span class="field-help">随机模式默认按约 50% 的中文字符进行稳定随机遮挡，点击下方按钮可换一版。</span>
+                            <span class="field-help">支持固定间隔、稳定随机、按词组块遮挡、按句段遮挡。随机模式可点击下方按钮换一版。</span>
                         </div>
                         <div class="interval-grid">
                             <button class="interval-btn active" type="button" data-interval="1">间隔 1</button>
@@ -1114,13 +1116,19 @@ function updateStatus(totalChinese, maskedChinese) {
     const variantTotal = currentInterval * 2;
     intervalStatus.innerText = String(currentInterval);
     offsetStatus.innerText = `${offset} / ${variantTotal - 1}`;
-    variantStatus.innerText = maskPattern === "interval" ? `${variantTotal} 种` : "随机模式";
+    variantStatus.innerText = maskPattern === "interval"
+        ? `${variantTotal} 种`
+        : maskPattern === "random"
+            ? "随机模式"
+            : maskPattern === "word"
+                ? "词组模式"
+                : "句子模式";
     chineseCount.innerText = String(totalChinese);
     maskedCount.innerText = String(maskedChinese);
-    topbarSummary.innerText = `${maskPattern === "interval" ? `间隔 ${currentInterval}` : "随机遮挡"} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken} · ${previewMode === "masked" ? "遮挡" : "原文"}`;
+    topbarSummary.innerText = `${getMaskPatternLabel()} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken} · ${previewMode === "masked" ? "遮挡" : "原文"}`;
     outputHint.innerText = totalChinese === 0
         ? "当前内容里没有检测到中文字符，因此不会出现遮挡效果。"
-        : `当前方案会遮挡 ${maskedChinese} 个中文字符，规则为${maskPattern === "interval" ? "固定间隔" : "随机遮挡"}，替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
+        : `当前方案会遮挡 ${maskedChinese} 个中文字符，规则为${getMaskPatternLabel()}，替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
     maskTokenPreview.innerText = maskToken === " " ? "空格" : maskToken;
     floatingToggleBtn.innerText = previewMode === "masked" ? "查看原文" : "查看遮挡";
     rerollRandomBtn.classList.toggle("hidden", maskPattern !== "random");
@@ -1143,6 +1151,19 @@ function updateMaskToken() {
 
 function updateMaskPattern() {
     maskPattern = maskPatternSelect.value;
+}
+
+function getMaskPatternLabel() {
+    if (maskPattern === "random") {
+        return "随机遮挡";
+    }
+    if (maskPattern === "word") {
+        return "词组遮挡";
+    }
+    if (maskPattern === "sentence") {
+        return "句子遮挡";
+    }
+    return `间隔 ${currentInterval}`;
 }
 
 function pseudoRandom(index, seed) {
@@ -1204,9 +1225,139 @@ function generateRandomText() {
     };
 }
 
+function maskChineseCharsInText(text) {
+    let maskedChinese = 0;
+    let result = "";
+
+    for (const char of text) {
+        if (isChinese(char)) {
+            result += maskToken;
+            maskedChinese++;
+        } else {
+            result += char;
+        }
+    }
+
+    return {
+        result,
+        maskedChinese
+    };
+}
+
+function buildWordSegments(input) {
+    const segments = [];
+    let chineseBuffer = "";
+    let plainBuffer = "";
+
+    function flushChineseBuffer() {
+        if (!chineseBuffer) {
+            return;
+        }
+        for (let i = 0; i < chineseBuffer.length; i += 2) {
+            segments.push({
+                type: "maskable",
+                text: chineseBuffer.slice(i, i + 2)
+            });
+        }
+        chineseBuffer = "";
+    }
+
+    function flushPlainBuffer() {
+        if (!plainBuffer) {
+            return;
+        }
+        segments.push({
+            type: "plain",
+            text: plainBuffer
+        });
+        plainBuffer = "";
+    }
+
+    for (const char of input) {
+        if (isChinese(char)) {
+            flushPlainBuffer();
+            chineseBuffer += char;
+        } else {
+            flushChineseBuffer();
+            plainBuffer += char;
+        }
+    }
+
+    flushChineseBuffer();
+    flushPlainBuffer();
+    return segments;
+}
+
+function buildSentenceSegments(input) {
+    const segments = [];
+    let sentenceBuffer = "";
+    const sentenceBreakers = new Set(["。", "！", "？", "；", "：", "，", "\n"]);
+
+    function flushSentenceBuffer() {
+        if (!sentenceBuffer) {
+            return;
+        }
+        segments.push({
+            type: "maskable",
+            text: sentenceBuffer
+        });
+        sentenceBuffer = "";
+    }
+
+    for (const char of input) {
+        sentenceBuffer += char;
+        if (sentenceBreakers.has(char)) {
+            flushSentenceBuffer();
+        }
+    }
+
+    flushSentenceBuffer();
+    return segments;
+}
+
+function generateSegmentText(segmentBuilder, interval, off) {
+    const segments = segmentBuilder(inputText.value);
+    let result = "";
+    let segmentIndex = 0;
+    let totalChinese = 0;
+    let maskedChinese = 0;
+
+    for (const segment of segments) {
+        if (segment.type !== "maskable") {
+            result += segment.text;
+            continue;
+        }
+
+        const chineseInSegment = Array.from(segment.text).filter(isChinese).length;
+        totalChinese += chineseInSegment;
+
+        const showSegment = ((segmentIndex + off) % (2 * interval)) < interval;
+        if (showSegment) {
+            result += segment.text;
+        } else {
+            const maskedSegment = maskChineseCharsInText(segment.text);
+            result += maskedSegment.result;
+            maskedChinese += maskedSegment.maskedChinese;
+        }
+        segmentIndex++;
+    }
+
+    return {
+        result,
+        totalChinese,
+        maskedChinese
+    };
+}
+
 function generateText(interval, off) {
     if (maskPattern === "random") {
         return generateRandomText();
+    }
+    if (maskPattern === "word") {
+        return generateSegmentText(buildWordSegments, interval, off);
+    }
+    if (maskPattern === "sentence") {
+        return generateSegmentText(buildSentenceSegments, interval, off);
     }
 
     return generateIntervalText(interval, off);

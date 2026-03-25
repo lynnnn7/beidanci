@@ -545,6 +545,27 @@
         font-size: 1rem;
     }
 
+    .secondary-btn {
+        width: 100%;
+        min-height: 44px;
+        margin-top: 12px;
+        border: 1px solid rgba(35, 88, 67, 0.12);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.78);
+        color: var(--accent-deep);
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .secondary-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(35, 88, 67, 0.1);
+    }
+
+    .secondary-btn.hidden {
+        display: none;
+    }
+
     .toggle-option {
         display: flex;
         align-items: center;
@@ -963,12 +984,21 @@
                     <section class="control-panel">
                         <h3>遮挡设置</h3>
                         <p>重复点击同一个间隔按钮，会自动轮换不同偏移形态。</p>
+                        <div class="field-group">
+                            <label class="field-label" for="maskPatternSelect">遮挡规则</label>
+                            <select class="control-select" id="maskPatternSelect">
+                                <option value="interval">固定间隔</option>
+                                <option value="random">随机遮挡</option>
+                            </select>
+                            <span class="field-help">随机模式默认按约 50% 的中文字符进行稳定随机遮挡，点击下方按钮可换一版。</span>
+                        </div>
                         <div class="interval-grid">
                             <button class="interval-btn active" type="button" data-interval="1">间隔 1</button>
                             <button class="interval-btn" type="button" data-interval="2">间隔 2</button>
                             <button class="interval-btn" type="button" data-interval="3">间隔 3</button>
                             <button class="interval-btn" type="button" data-interval="4">间隔 4</button>
                         </div>
+                        <button class="secondary-btn hidden" type="button" id="rerollRandomBtn">换一版随机</button>
                         <div class="field-group">
                             <label class="field-label" for="maskTokenSelect">替换字符</label>
                             <select class="control-select" id="maskTokenSelect">
@@ -1022,6 +1052,8 @@ let offset = 0;
 let toastTimer = null;
 let maskToken = "⬛";
 let previewMode = "masked";
+let maskPattern = "interval";
+let randomSeed = Date.now();
 
 const inputText = document.getElementById("inputText");
 const outputText = document.getElementById("outputText");
@@ -1041,6 +1073,8 @@ const closeMenuBtn = document.getElementById("closeMenuBtn");
 const maskTokenSelect = document.getElementById("maskTokenSelect");
 const customMaskInput = document.getElementById("customMaskInput");
 const maskTokenPreview = document.getElementById("maskTokenPreview");
+const maskPatternSelect = document.getElementById("maskPatternSelect");
+const rerollRandomBtn = document.getElementById("rerollRandomBtn");
 const floatingToggleEnabled = document.getElementById("floatingToggleEnabled");
 const floatingToggleBtn = document.getElementById("floatingToggleBtn");
 const intervalButtons = Array.from(document.querySelectorAll(".interval-btn"));
@@ -1080,15 +1114,16 @@ function updateStatus(totalChinese, maskedChinese) {
     const variantTotal = currentInterval * 2;
     intervalStatus.innerText = String(currentInterval);
     offsetStatus.innerText = `${offset} / ${variantTotal - 1}`;
-    variantStatus.innerText = `${variantTotal} 种`;
+    variantStatus.innerText = maskPattern === "interval" ? `${variantTotal} 种` : "随机模式";
     chineseCount.innerText = String(totalChinese);
     maskedCount.innerText = String(maskedChinese);
-    topbarSummary.innerText = `间隔 ${currentInterval} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken} · ${previewMode === "masked" ? "遮挡" : "原文"}`;
+    topbarSummary.innerText = `${maskPattern === "interval" ? `间隔 ${currentInterval}` : "随机遮挡"} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken} · ${previewMode === "masked" ? "遮挡" : "原文"}`;
     outputHint.innerText = totalChinese === 0
         ? "当前内容里没有检测到中文字符，因此不会出现遮挡效果。"
-        : `当前方案会遮挡 ${maskedChinese} 个中文字符，当前替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
+        : `当前方案会遮挡 ${maskedChinese} 个中文字符，规则为${maskPattern === "interval" ? "固定间隔" : "随机遮挡"}，替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
     maskTokenPreview.innerText = maskToken === " " ? "空格" : maskToken;
     floatingToggleBtn.innerText = previewMode === "masked" ? "查看原文" : "查看遮挡";
+    rerollRandomBtn.classList.toggle("hidden", maskPattern !== "random");
 }
 
 function resolveMaskToken() {
@@ -1106,12 +1141,16 @@ function updateMaskToken() {
     maskToken = resolveMaskToken();
 }
 
-function setPreviewMode(mode) {
-    previewMode = mode;
-    updateStatus(Number(chineseCount.innerText || 0), Number(maskedCount.innerText || 0));
+function updateMaskPattern() {
+    maskPattern = maskPatternSelect.value;
 }
 
-function generateText(interval, off) {
+function pseudoRandom(index, seed) {
+    const raw = Math.sin((index + 1) * (seed + 1) * 12.9898) * 43758.5453;
+    return raw - Math.floor(raw);
+}
+
+function generateIntervalText(interval, off) {
     const input = inputText.value;
     let result = "";
     let chineseIndex = 0;
@@ -1136,6 +1175,41 @@ function generateText(interval, off) {
         totalChinese: chineseIndex,
         maskedChinese
     };
+}
+
+function generateRandomText() {
+    const input = inputText.value;
+    let result = "";
+    let chineseIndex = 0;
+    let maskedChinese = 0;
+
+    for (const char of input) {
+        if (isChinese(char)) {
+            if (pseudoRandom(chineseIndex, randomSeed) < 0.5) {
+                result += maskToken;
+                maskedChinese++;
+            } else {
+                result += char;
+            }
+            chineseIndex++;
+        } else {
+            result += char;
+        }
+    }
+
+    return {
+        result,
+        totalChinese: chineseIndex,
+        maskedChinese
+    };
+}
+
+function generateText(interval, off) {
+    if (maskPattern === "random") {
+        return generateRandomText();
+    }
+
+    return generateIntervalText(interval, off);
 }
 
 function processText() {
@@ -1239,6 +1313,15 @@ customMaskInput.addEventListener("input", () => {
     updateMaskToken();
     processText();
 });
+maskPatternSelect.addEventListener("change", () => {
+    updateMaskPattern();
+    processText();
+});
+rerollRandomBtn.addEventListener("click", () => {
+    randomSeed = Date.now();
+    processText();
+    showToast("已生成新的随机遮挡版本。");
+});
 floatingToggleEnabled.addEventListener("change", updateFloatingToggleVisibility);
 floatingToggleBtn.addEventListener("click", () => {
     previewMode = previewMode === "masked" ? "original" : "masked";
@@ -1260,6 +1343,7 @@ document.getElementById("exportAllBtn").addEventListener("click", () => exportTX
 inputText.addEventListener("input", processText);
 
 updateMaskToken();
+updateMaskPattern();
 processText();
 loadDefaultTXT();
 </script>

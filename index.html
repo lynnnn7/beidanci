@@ -1259,6 +1259,17 @@
                             <input type="checkbox" id="mobilePracticeEnabled">
                             <span>手机练习模式：小屏时切到大字号、全屏预览和底部操作区</span>
                         </label>
+                        <div class="field-group">
+                            <label class="toggle-option" for="progressiveModeEnabled">
+                                <input type="checkbox" id="progressiveModeEnabled">
+                                <span>逐步加难：从较低遮挡比例开始，再逐步提高到当前目标比例</span>
+                            </label>
+                            <div class="action-grid hidden" id="progressiveActions" style="margin-top: 12px;">
+                                <button class="action-btn primary" type="button" id="progressiveAdvanceBtn">提高难度</button>
+                                <button class="action-btn" type="button" id="progressiveResetBtn">重新起步</button>
+                            </div>
+                            <span class="field-help" id="progressiveStatus">当前使用普通模式，直接按上方比例生效。</span>
+                        </div>
                     </section>
                 </div>
             </div>
@@ -1280,6 +1291,8 @@ let previewMode = "masked";
 let maskPattern = "interval";
 let randomSeed = Date.now();
 let maskRatio = 0.5;
+let progressiveMode = false;
+let progressiveCurrentRatio = 0.2;
 const HISTORY_LIMIT = 6;
 const HISTORY_STORAGE_KEY = "text-mask-history-v1";
 
@@ -1311,6 +1324,11 @@ const maskRatioValue = document.getElementById("maskRatioValue");
 const rerollRandomBtn = document.getElementById("rerollRandomBtn");
 const floatingToggleEnabled = document.getElementById("floatingToggleEnabled");
 const mobilePracticeEnabled = document.getElementById("mobilePracticeEnabled");
+const progressiveModeEnabled = document.getElementById("progressiveModeEnabled");
+const progressiveActions = document.getElementById("progressiveActions");
+const progressiveAdvanceBtn = document.getElementById("progressiveAdvanceBtn");
+const progressiveResetBtn = document.getElementById("progressiveResetBtn");
+const progressiveStatus = document.getElementById("progressiveStatus");
 const floatingToggleBtn = document.getElementById("floatingToggleBtn");
 const historyList = document.getElementById("historyList");
 const historyEmpty = document.getElementById("historyEmpty");
@@ -1402,6 +1420,65 @@ function updateMaskRatio() {
     maskRatio = Number(maskRatioRange.value) / 100;
 }
 
+function getProgressiveStartRatio() {
+    return Math.min(maskRatio, 0.2);
+}
+
+function getProgressiveStepRatio() {
+    const span = Math.max(maskRatio - getProgressiveStartRatio(), 0.05);
+    return Math.max(0.05, Math.round((span / 4) / 0.05) * 0.05);
+}
+
+function getEffectiveMaskRatio() {
+    return progressiveMode ? progressiveCurrentRatio : maskRatio;
+}
+
+function refreshProgressiveStatus() {
+    const effectiveRatio = Math.round(getEffectiveMaskRatio() * 100);
+    const targetRatio = Math.round(maskRatio * 100);
+    progressiveActions.classList.toggle("hidden", !progressiveMode);
+    progressiveAdvanceBtn.disabled = !progressiveMode || progressiveCurrentRatio >= maskRatio;
+    progressiveResetBtn.disabled = !progressiveMode;
+    progressiveStatus.innerText = progressiveMode
+        ? `当前难度 ${effectiveRatio}% ，目标 ${targetRatio}% 。点击“提高难度”会继续靠近目标值。`
+        : `当前使用普通模式，直接按 ${targetRatio}% 的比例生效。`;
+}
+
+function resetProgressiveDifficulty() {
+    progressiveCurrentRatio = getProgressiveStartRatio();
+    refreshProgressiveStatus();
+}
+
+function updateProgressiveMode(showFeedback) {
+    progressiveMode = progressiveModeEnabled.checked;
+
+    if (progressiveMode) {
+        progressiveCurrentRatio = Math.min(Math.max(progressiveCurrentRatio, getProgressiveStartRatio()), maskRatio);
+        if (progressiveCurrentRatio <= 0 || progressiveCurrentRatio > maskRatio) {
+            progressiveCurrentRatio = getProgressiveStartRatio();
+        }
+    } else {
+        progressiveCurrentRatio = getProgressiveStartRatio();
+    }
+
+    refreshProgressiveStatus();
+
+    if (showFeedback) {
+        showToast(progressiveMode ? "已开启逐步加难模式。" : "已退出逐步加难模式。");
+    }
+}
+
+function advanceProgressiveDifficulty() {
+    if (!progressiveMode) {
+        return;
+    }
+
+    progressiveCurrentRatio = Math.min(maskRatio, progressiveCurrentRatio + getProgressiveStepRatio());
+    refreshProgressiveStatus();
+    processText();
+    showToast(progressiveCurrentRatio >= maskRatio ? "已经达到当前目标难度。" : `难度已提高到 ${Math.round(progressiveCurrentRatio * 100)}%。`);
+}
+
 function readStorage(key, fallbackValue) {
     try {
         if (!window.localStorage) {
@@ -1447,6 +1524,8 @@ function buildHistoryEntry() {
         maskRatioRangeValue: maskRatioRange.value,
         floatingToggleEnabled: floatingToggleEnabled.checked,
         mobilePracticeEnabled: mobilePracticeEnabled.checked,
+        progressiveModeEnabled: progressiveModeEnabled.checked,
+        progressiveCurrentRatio,
         previewMode
     };
 }
@@ -1515,6 +1594,8 @@ function saveCurrentToHistory() {
         && latestEntry.maskRatioRangeValue === nextEntry.maskRatioRangeValue
         && latestEntry.floatingToggleEnabled === nextEntry.floatingToggleEnabled
         && latestEntry.mobilePracticeEnabled === nextEntry.mobilePracticeEnabled
+        && latestEntry.progressiveModeEnabled === nextEntry.progressiveModeEnabled
+        && latestEntry.progressiveCurrentRatio === nextEntry.progressiveCurrentRatio
         && latestEntry.previewMode === nextEntry.previewMode;
 
     historyEntries = isSameAsLatest
@@ -1540,12 +1621,15 @@ function applyHistoryEntry(entry) {
     maskRatioRange.value = entry.maskRatioRangeValue || "50";
     floatingToggleEnabled.checked = Boolean(entry.floatingToggleEnabled);
     mobilePracticeEnabled.checked = Boolean(entry.mobilePracticeEnabled);
+    progressiveModeEnabled.checked = Boolean(entry.progressiveModeEnabled);
     previewMode = entry.previewMode === "original" ? "original" : "masked";
+    progressiveCurrentRatio = Number(entry.progressiveCurrentRatio) || 0.2;
     updateMaskToken();
     updateMaskPattern();
     updateMaskRatio();
     updateFloatingToggleVisibility();
     updateMobilePracticeMode();
+    updateProgressiveMode();
     processText();
 }
 
@@ -1584,6 +1668,8 @@ function getMaskPatternLabel() {
 }
 
 function getMaskCycleStats() {
+    const activeRatio = getEffectiveMaskRatio();
+
     if (maskPattern === "random") {
         return {
             showCount: 0,
@@ -1592,7 +1678,7 @@ function getMaskCycleStats() {
         };
     }
 
-    if (maskRatio <= 0) {
+    if (activeRatio <= 0) {
         return {
             showCount: 1,
             hideCount: 0,
@@ -1600,7 +1686,7 @@ function getMaskCycleStats() {
         };
     }
 
-    if (maskRatio >= 1) {
+    if (activeRatio >= 1) {
         return {
             showCount: 0,
             hideCount: 1,
@@ -1608,8 +1694,13 @@ function getMaskCycleStats() {
         };
     }
 
-    const showCount = Math.max(1, currentInterval);
-    const hideCount = Math.max(1, Math.round(showCount * maskRatio / (1 - maskRatio)));
+    const baseCount = Math.max(1, currentInterval);
+    const showCount = activeRatio <= 0.5
+        ? Math.max(1, Math.round(baseCount * (1 - activeRatio) / activeRatio))
+        : baseCount;
+    const hideCount = activeRatio <= 0.5
+        ? baseCount
+        : Math.max(1, Math.round(baseCount * activeRatio / (1 - activeRatio)));
 
     return {
         showCount,
@@ -1665,13 +1756,14 @@ function generateIntervalText(interval, off) {
 
 function generateRandomText() {
     const input = inputText.value;
+    const activeRatio = getEffectiveMaskRatio();
     let result = "";
     let chineseIndex = 0;
     let maskedChinese = 0;
 
     for (const char of input) {
         if (isChinese(char)) {
-            if (pseudoRandom(chineseIndex, randomSeed) < maskRatio) {
+            if (pseudoRandom(chineseIndex, randomSeed) < activeRatio) {
                 result += maskToken;
                 maskedChinese++;
             } else {
@@ -1944,6 +2036,13 @@ maskPatternSelect.addEventListener("change", () => {
 maskRatioRange.addEventListener("input", () => {
     updateMaskRatio();
     offset = 0;
+    if (progressiveMode) {
+        progressiveCurrentRatio = Math.min(progressiveCurrentRatio, maskRatio);
+        if (progressiveCurrentRatio <= 0 || progressiveCurrentRatio > maskRatio) {
+            progressiveCurrentRatio = getProgressiveStartRatio();
+        }
+        refreshProgressiveStatus();
+    }
     processText();
 });
 rerollRandomBtn.addEventListener("click", () => {
@@ -1953,6 +2052,16 @@ rerollRandomBtn.addEventListener("click", () => {
 });
 floatingToggleEnabled.addEventListener("change", updateFloatingToggleVisibility);
 mobilePracticeEnabled.addEventListener("change", () => updateMobilePracticeMode(true));
+progressiveModeEnabled.addEventListener("change", () => {
+    updateProgressiveMode(true);
+    processText();
+});
+progressiveAdvanceBtn.addEventListener("click", advanceProgressiveDifficulty);
+progressiveResetBtn.addEventListener("click", () => {
+    resetProgressiveDifficulty();
+    processText();
+    showToast("难度已回到起步阶段。");
+});
 floatingToggleBtn.addEventListener("click", () => {
     previewMode = previewMode === "masked" ? "original" : "masked";
     processText();
@@ -1989,6 +2098,7 @@ updateMaskToken();
 updateMaskPattern();
 updateMaskRatio();
 updateMobilePracticeMode();
+updateProgressiveMode();
 processText();
 loadDefaultTXT();
 </script>

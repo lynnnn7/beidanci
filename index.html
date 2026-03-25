@@ -519,6 +519,22 @@
         box-shadow: 0 0 0 3px rgba(35, 88, 67, 0.08);
     }
 
+    .control-range {
+        width: 100%;
+        margin: 6px 0 0;
+        accent-color: var(--accent);
+    }
+
+    .range-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+        color: var(--accent-deep);
+        font-size: 0.9rem;
+    }
+
     .mask-preview {
         display: flex;
         align-items: center;
@@ -994,6 +1010,14 @@
                             </select>
                             <span class="field-help">支持固定间隔、稳定随机、按词组块遮挡、按句段遮挡。随机模式可点击下方按钮换一版。</span>
                         </div>
+                        <div class="field-group">
+                            <div class="range-row">
+                                <label class="field-label" for="maskRatioRange" style="margin-bottom: 0;">遮挡比例</label>
+                                <strong id="maskRatioValue">50%</strong>
+                            </div>
+                            <input class="control-range" id="maskRatioRange" type="range" min="0" max="100" step="5" value="50">
+                            <span class="field-help">随机模式按该比例直接遮挡；固定间隔、词组、句子模式会按这个比例调整显示段与遮挡段的分布。</span>
+                        </div>
                         <div class="interval-grid">
                             <button class="interval-btn active" type="button" data-interval="1">间隔 1</button>
                             <button class="interval-btn" type="button" data-interval="2">间隔 2</button>
@@ -1056,6 +1080,7 @@ let maskToken = "⬛";
 let previewMode = "masked";
 let maskPattern = "interval";
 let randomSeed = Date.now();
+let maskRatio = 0.5;
 
 const inputText = document.getElementById("inputText");
 const outputText = document.getElementById("outputText");
@@ -1076,6 +1101,8 @@ const maskTokenSelect = document.getElementById("maskTokenSelect");
 const customMaskInput = document.getElementById("customMaskInput");
 const maskTokenPreview = document.getElementById("maskTokenPreview");
 const maskPatternSelect = document.getElementById("maskPatternSelect");
+const maskRatioRange = document.getElementById("maskRatioRange");
+const maskRatioValue = document.getElementById("maskRatioValue");
 const rerollRandomBtn = document.getElementById("rerollRandomBtn");
 const floatingToggleEnabled = document.getElementById("floatingToggleEnabled");
 const floatingToggleBtn = document.getElementById("floatingToggleBtn");
@@ -1113,9 +1140,10 @@ function updateIntervalButtons() {
 }
 
 function updateStatus(totalChinese, maskedChinese) {
-    const variantTotal = currentInterval * 2;
+    const cycleStats = getMaskCycleStats();
+    const variantTotal = cycleStats.total;
     intervalStatus.innerText = String(currentInterval);
-    offsetStatus.innerText = `${offset} / ${variantTotal - 1}`;
+    offsetStatus.innerText = maskPattern === "random" ? "随机版" : `${offset} / ${Math.max(variantTotal - 1, 0)}`;
     variantStatus.innerText = maskPattern === "interval"
         ? `${variantTotal} 种`
         : maskPattern === "random"
@@ -1132,6 +1160,7 @@ function updateStatus(totalChinese, maskedChinese) {
     maskTokenPreview.innerText = maskToken === " " ? "空格" : maskToken;
     floatingToggleBtn.innerText = previewMode === "masked" ? "查看原文" : "查看遮挡";
     rerollRandomBtn.classList.toggle("hidden", maskPattern !== "random");
+    maskRatioValue.innerText = `${Math.round(maskRatio * 100)}%`;
 }
 
 function resolveMaskToken() {
@@ -1153,6 +1182,10 @@ function updateMaskPattern() {
     maskPattern = maskPatternSelect.value;
 }
 
+function updateMaskRatio() {
+    maskRatio = Number(maskRatioRange.value) / 100;
+}
+
 function getMaskPatternLabel() {
     if (maskPattern === "random") {
         return "随机遮挡";
@@ -1164,6 +1197,54 @@ function getMaskPatternLabel() {
         return "句子遮挡";
     }
     return `间隔 ${currentInterval}`;
+}
+
+function getMaskCycleStats() {
+    if (maskPattern === "random") {
+        return {
+            showCount: 0,
+            hideCount: 0,
+            total: 1
+        };
+    }
+
+    if (maskRatio <= 0) {
+        return {
+            showCount: 1,
+            hideCount: 0,
+            total: 1
+        };
+    }
+
+    if (maskRatio >= 1) {
+        return {
+            showCount: 0,
+            hideCount: 1,
+            total: 1
+        };
+    }
+
+    const showCount = Math.max(1, currentInterval);
+    const hideCount = Math.max(1, Math.round(showCount * maskRatio / (1 - maskRatio)));
+
+    return {
+        showCount,
+        hideCount,
+        total: showCount + hideCount
+    };
+}
+
+function shouldMaskByCycle(index) {
+    const cycleStats = getMaskCycleStats();
+
+    if (cycleStats.hideCount === 0) {
+        return false;
+    }
+    if (cycleStats.showCount === 0) {
+        return true;
+    }
+
+    return ((index + offset) % cycleStats.total) >= cycleStats.showCount;
 }
 
 function pseudoRandom(index, seed) {
@@ -1179,11 +1260,11 @@ function generateIntervalText(interval, off) {
 
     for (const char of input) {
         if (isChinese(char)) {
-            if ((chineseIndex + off) % (2 * interval) < interval) {
-                result += char;
-            } else {
+            if (shouldMaskByCycle(chineseIndex)) {
                 result += maskToken;
                 maskedChinese++;
+            } else {
+                result += char;
             }
             chineseIndex++;
         } else {
@@ -1206,7 +1287,7 @@ function generateRandomText() {
 
     for (const char of input) {
         if (isChinese(char)) {
-            if (pseudoRandom(chineseIndex, randomSeed) < 0.5) {
+            if (pseudoRandom(chineseIndex, randomSeed) < maskRatio) {
                 result += maskToken;
                 maskedChinese++;
             } else {
@@ -1331,7 +1412,7 @@ function generateSegmentText(segmentBuilder, interval, off) {
         const chineseInSegment = Array.from(segment.text).filter(isChinese).length;
         totalChinese += chineseInSegment;
 
-        const showSegment = ((segmentIndex + off) % (2 * interval)) < interval;
+        const showSegment = !shouldMaskByCycle(segmentIndex);
         if (showSegment) {
             result += segment.text;
         } else {
@@ -1372,7 +1453,7 @@ function processText() {
 
 function setIntervalMask(interval) {
     if (currentInterval === interval) {
-        offset = (offset + 1) % (2 * interval);
+        offset = (offset + 1) % getMaskCycleStats().total;
     } else {
         currentInterval = interval;
         offset = 0;
@@ -1468,6 +1549,11 @@ maskPatternSelect.addEventListener("change", () => {
     updateMaskPattern();
     processText();
 });
+maskRatioRange.addEventListener("input", () => {
+    updateMaskRatio();
+    offset = 0;
+    processText();
+});
 rerollRandomBtn.addEventListener("click", () => {
     randomSeed = Date.now();
     processText();
@@ -1495,6 +1581,7 @@ inputText.addEventListener("input", processText);
 
 updateMaskToken();
 updateMaskPattern();
+updateMaskRatio();
 processText();
 loadDefaultTXT();
 </script>

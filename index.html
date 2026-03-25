@@ -783,6 +783,35 @@
         display: none;
     }
 
+    .exit-practice-btn {
+        position: fixed;
+        left: 18px;
+        bottom: 92px;
+        z-index: 44;
+        min-height: 48px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(185, 101, 51, 0.88);
+        color: #fffaf2;
+        box-shadow: 0 12px 24px rgba(115, 57, 24, 0.18);
+        backdrop-filter: blur(10px);
+        cursor: pointer;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        display: none;
+    }
+
+    .exit-practice-btn:hover {
+        opacity: 0.82;
+        transform: translateY(-1px);
+    }
+
+    body.mobile-practice-mode .exit-practice-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     @media (max-width: 1080px) {
         .workspace {
             grid-template-columns: 1fr;
@@ -995,6 +1024,11 @@
 
         .floating-toggle-btn {
             right: 12px;
+            bottom: 84px;
+        }
+
+        .exit-practice-btn {
+            left: 12px;
             bottom: 84px;
         }
 
@@ -1296,6 +1330,7 @@
 </main>
 
 <button class="floating-toggle-btn hidden" type="button" id="floatingToggleBtn">查看原文</button>
+<button class="exit-practice-btn" type="button" id="exitPracticeBtn">退出全屏</button>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1354,6 +1389,7 @@ const segmentPrevBtn = document.getElementById("segmentPrevBtn");
 const segmentNextBtn = document.getElementById("segmentNextBtn");
 const segmentStatus = document.getElementById("segmentStatus");
 const floatingToggleBtn = document.getElementById("floatingToggleBtn");
+const exitPracticeBtn = document.getElementById("exitPracticeBtn");
 const historyList = document.getElementById("historyList");
 const historyEmpty = document.getElementById("historyEmpty");
 const intervalButtons = Array.from(document.querySelectorAll(".interval-btn"));
@@ -2107,12 +2143,17 @@ function updateFloatingToggleVisibility() {
         previewMode = "masked";
         processText();
     } else if (enabled) {
-        updateStatus(Number(chineseCount.innerText || 0), Number(maskedCount.innerText || 0));
+        processText();
     }
 }
 
 function updateMobilePracticeMode(showFeedback) {
     document.body.classList.toggle("mobile-practice-mode", mobilePracticeEnabled.checked);
+
+    if (mobilePracticeEnabled.checked && !floatingToggleEnabled.checked) {
+        floatingToggleEnabled.checked = true;
+    }
+    updateFloatingToggleVisibility();
 
     if (showFeedback) {
         showToast(mobilePracticeEnabled.checked ? "已开启手机练习模式。" : "已退出手机练习模式。");
@@ -2192,6 +2233,11 @@ segmentPrevBtn.addEventListener("click", () => moveSegment(-1));
 segmentNextBtn.addEventListener("click", () => moveSegment(1));
 floatingToggleBtn.addEventListener("click", () => {
     previewMode = previewMode === "masked" ? "original" : "masked";
+    processText();
+});
+exitPracticeBtn.addEventListener("click", () => {
+    mobilePracticeEnabled.checked = false;
+    updateMobilePracticeMode(true);
     processText();
 });
 

@@ -6,21 +6,20 @@
 <title>中文间隔遮挡工具</title>
 <style>
     :root {
-        --bg: #f3efe7;
-        --panel: rgba(255, 252, 247, 0.86);
-        --panel-strong: #fffdf8;
+        --bg: #efe7dd;
+        --paper: rgba(255, 252, 247, 0.88);
+        --paper-strong: #fffdf8;
+        --line: rgba(35, 88, 67, 0.12);
         --text: #1f2a24;
-        --muted: #5c695f;
-        --line: rgba(60, 87, 71, 0.16);
+        --muted: #627166;
         --accent: #235843;
-        --accent-soft: #d9ecdc;
-        --accent-strong: #143c2e;
-        --highlight: #c9783f;
-        --shadow: 0 24px 60px rgba(33, 52, 42, 0.14);
+        --accent-deep: #173c2e;
+        --accent-soft: rgba(35, 88, 67, 0.08);
+        --accent-warm: #c9783f;
+        --shadow: 0 22px 56px rgba(25, 42, 34, 0.14);
         --radius-xl: 28px;
-        --radius-lg: 20px;
+        --radius-lg: 22px;
         --radius-md: 16px;
-        --radius-sm: 12px;
     }
 
     * {
@@ -34,12 +33,12 @@
     body {
         margin: 0;
         min-height: 100vh;
-        font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
         color: var(--text);
+        font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
         background:
-            radial-gradient(circle at top left, rgba(161, 205, 170, 0.35), transparent 28%),
+            radial-gradient(circle at top left, rgba(161, 205, 170, 0.34), transparent 28%),
             radial-gradient(circle at top right, rgba(213, 147, 92, 0.22), transparent 26%),
-            linear-gradient(180deg, #f7f3ec 0%, #efe7db 100%);
+            linear-gradient(180deg, #f7f2eb 0%, var(--bg) 100%);
     }
 
     body::before {
@@ -51,62 +50,66 @@
             linear-gradient(rgba(35, 88, 67, 0.045) 1px, transparent 1px),
             linear-gradient(90deg, rgba(35, 88, 67, 0.045) 1px, transparent 1px);
         background-size: 24px 24px;
-        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 72%);
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.58), transparent 72%);
     }
 
-    .page {
-        position: relative;
-        width: min(1200px, calc(100% - 32px));
+    button {
+        font: inherit;
+    }
+
+    .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        backdrop-filter: blur(14px);
+        background: rgba(247, 242, 235, 0.78);
+        border-bottom: 1px solid rgba(35, 88, 67, 0.08);
+    }
+
+    .topbar-inner {
+        width: min(1280px, calc(100% - 24px));
         margin: 0 auto;
-        padding: 32px 0 48px;
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
     }
 
-    .hero {
-        display: grid;
-        grid-template-columns: 1.15fr 0.85fr;
-        gap: 24px;
-        align-items: stretch;
-        margin-bottom: 24px;
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
     }
 
-    .hero-card,
-    .note-card,
-    .editor-card,
-    .preview-card,
-    .tips-card {
-        position: relative;
-        overflow: hidden;
-        background: var(--panel);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow);
+    .brand-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--accent) 0%, #3d7f64 100%);
+        color: #fffaf2;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        box-shadow: 0 14px 28px rgba(35, 88, 67, 0.24);
     }
 
-    .hero-card {
-        padding: 32px;
-    }
-
-    .hero-card::after,
-    .note-card::after {
-        content: "";
-        position: absolute;
-        inset: auto -60px -90px auto;
-        width: 220px;
-        height: 220px;
-        background: radial-gradient(circle, rgba(201, 120, 63, 0.18), transparent 68%);
-        transform: rotate(18deg);
+    .brand-copy {
+        min-width: 0;
     }
 
     .eyebrow {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 14px;
+        min-height: 28px;
+        padding: 0 12px;
         border-radius: 999px;
-        background: rgba(35, 88, 67, 0.08);
+        background: var(--accent-soft);
         color: var(--accent);
-        font-size: 13px;
+        font-size: 0.76rem;
         letter-spacing: 0.08em;
     }
 
@@ -115,282 +118,267 @@
     h3 {
         margin: 0;
         font-family: "STZhongsong", "Noto Serif SC", "Source Han Serif SC", serif;
-        font-weight: 700;
         letter-spacing: 0.02em;
     }
 
-    h1 {
-        margin-top: 18px;
-        font-size: clamp(2rem, 4vw, 3.5rem);
-        line-height: 1.08;
+    .brand-copy h1 {
+        margin-top: 6px;
+        font-size: clamp(1.15rem, 2.4vw, 1.7rem);
+        line-height: 1.1;
     }
 
-    .hero-copy {
-        margin: 16px 0 24px;
-        max-width: 44em;
+    .brand-copy p {
+        margin: 4px 0 0;
         color: var(--muted);
-        font-size: 1rem;
-        line-height: 1.75;
+        font-size: 0.92rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .hero-actions {
+    .topbar-actions {
         display: flex;
-        flex-wrap: wrap;
+        align-items: center;
         gap: 12px;
     }
 
-    .chip-link,
+    .summary-chip,
+    .menu-btn,
+    .nav-link,
+    .interval-btn,
     .action-btn,
-    .interval-btn {
+    .close-btn {
         appearance: none;
         border: 0;
-        cursor: pointer;
         transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
     }
 
-    .chip-link {
+    .summary-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(35, 88, 67, 0.08);
+        color: var(--accent-deep);
+        font-size: 0.92rem;
+        box-shadow: 0 10px 24px rgba(35, 88, 67, 0.08);
+    }
+
+    .menu-btn,
+    .close-btn {
+        cursor: pointer;
+        min-height: 46px;
+        padding: 0 18px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent) 0%, #3f7f66 100%);
+        color: #fffaf2;
+        box-shadow: 0 16px 30px rgba(35, 88, 67, 0.24);
+    }
+
+    .menu-btn:hover,
+    .close-btn:hover,
+    .nav-link:hover,
+    .interval-btn:hover,
+    .action-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 34;
+        background: rgba(23, 60, 46, 0.34);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+
+    .backdrop.visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .nav-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        z-index: 35;
+        width: min(390px, calc(100vw - 20px));
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 18px;
+        background: rgba(255, 251, 246, 0.96);
+        backdrop-filter: blur(18px);
+        border-left: 1px solid rgba(35, 88, 67, 0.08);
+        box-shadow: -18px 0 48px rgba(20, 36, 29, 0.18);
+        transform: translateX(104%);
+        transition: transform 0.28s ease;
+    }
+
+    .nav-drawer.open {
+        transform: translateX(0);
+    }
+
+    .drawer-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .drawer-copy p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 0.94rem;
+    }
+
+    .drawer-scroll {
+        overflow: auto;
+        padding-right: 4px;
+        display: grid;
+        gap: 14px;
+    }
+
+    .nav-panel,
+    .editor-card,
+    .preview-card {
+        position: relative;
+        overflow: hidden;
+        background: var(--paper);
+        border: 1px solid rgba(255, 255, 255, 0.65);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow);
+    }
+
+    .nav-panel {
+        padding: 18px;
+    }
+
+    .nav-panel p,
+    .nav-panel small,
+    .helper,
+    .preview-note {
+        color: var(--muted);
+        line-height: 1.7;
+    }
+
+    .nav-actions,
+    .metrics-grid,
+    .tips-grid,
+    .interval-grid,
+    .action-grid {
+        display: grid;
+        gap: 10px;
+    }
+
+    .nav-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 14px;
+    }
+
+    .nav-link {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         min-height: 44px;
-        padding: 0 18px;
+        padding: 0 16px;
         border-radius: 999px;
-        background: var(--accent);
-        color: #f9f5ee;
-        text-decoration: none;
-        box-shadow: 0 14px 28px rgba(35, 88, 67, 0.24);
-    }
-
-    .chip-link.secondary {
         background: rgba(35, 88, 67, 0.08);
-        color: var(--accent-strong);
-        box-shadow: none;
+        color: var(--accent-deep);
+        text-decoration: none;
+        font-weight: 600;
     }
 
-    .chip-link:hover,
-    .action-btn:hover,
-    .interval-btn:hover {
-        transform: translateY(-1px);
+    .nav-link.primary {
+        background: var(--accent);
+        color: #fffaf2;
+        box-shadow: 0 14px 28px rgba(35, 88, 67, 0.22);
     }
 
-    .note-card {
-        padding: 28px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        gap: 18px;
-    }
-
-    .note-grid {
-        display: grid;
+    .interval-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        margin-top: 14px;
+    }
+
+    .action-grid {
+        grid-template-columns: 1fr;
+        margin-top: 14px;
+    }
+
+    .interval-btn,
+    .action-btn {
+        cursor: pointer;
+        min-height: 50px;
+        padding: 12px 14px;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+    }
+
+    .interval-btn {
+        background: rgba(35, 88, 67, 0.07);
+        color: var(--accent-deep);
+    }
+
+    .interval-btn.active {
+        background: linear-gradient(135deg, var(--accent) 0%, #3a7b5f 100%);
+        color: #fffaf1;
+        box-shadow: 0 16px 30px rgba(35, 88, 67, 0.24);
+    }
+
+    .action-btn {
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--text);
+        border: 1px solid var(--line);
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, var(--accent-warm) 0%, #b36233 100%);
+        color: #fff8f0;
+        border-color: transparent;
+        box-shadow: 0 16px 28px rgba(185, 101, 51, 0.22);
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 14px;
     }
 
     .metric {
         padding: 16px;
         border-radius: var(--radius-md);
-        background: rgba(255, 255, 255, 0.58);
+        background: rgba(255, 255, 255, 0.65);
         border: 1px solid rgba(35, 88, 67, 0.08);
     }
 
     .metric-label {
         display: block;
-        color: var(--muted);
-        font-size: 0.84rem;
         margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 0.82rem;
     }
 
     .metric strong {
-        font-size: clamp(1.3rem, 3vw, 2rem);
+        font-size: 1.3rem;
         font-weight: 700;
     }
 
     .metric small {
         display: block;
         margin-top: 6px;
-        color: var(--muted);
-        line-height: 1.5;
     }
 
-    .workspace {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.88fr);
-        gap: 24px;
-        align-items: start;
-    }
-
-    .editor-card,
-    .preview-card,
-    .tips-card {
-        padding: 24px;
-    }
-
-    .section-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 18px;
-    }
-
-    .section-head p,
-    .tips-card p,
-    .status-line,
-    .helper {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.68;
-    }
-
-    .pill {
-        flex-shrink: 0;
-        display: inline-flex;
-        align-items: center;
-        min-height: 36px;
-        padding: 0 14px;
-        border-radius: 999px;
-        background: rgba(35, 88, 67, 0.08);
-        color: var(--accent);
-        font-size: 0.86rem;
-    }
-
-    textarea {
-        width: 100%;
-        min-height: 380px;
-        resize: vertical;
-        border: 1px solid rgba(35, 88, 67, 0.12);
-        border-radius: var(--radius-lg);
-        padding: 20px;
-        background: rgba(255, 255, 255, 0.82);
-        color: var(--text);
-        font: 500 16px/1.8 "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
-        outline: none;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-
-    textarea:focus {
-        border-color: rgba(35, 88, 67, 0.36);
-        box-shadow: 0 0 0 4px rgba(35, 88, 67, 0.08);
-        background: #fffefb;
-    }
-
-    .control-group {
-        margin-top: 18px;
-    }
-
-    .group-label {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 12px;
-        color: var(--muted);
-        font-size: 0.94rem;
-    }
-
-    .interval-grid,
-    .action-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
-    }
-
-    .action-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .interval-btn,
-    .action-btn {
-        min-height: 52px;
-        padding: 12px 14px;
-        border-radius: var(--radius-md);
-        font-size: 0.96rem;
-        font-weight: 600;
-    }
-
-    .interval-btn {
-        background: rgba(35, 88, 67, 0.07);
-        color: var(--accent-strong);
-    }
-
-    .interval-btn.active {
-        background: linear-gradient(135deg, var(--accent) 0%, #3a7b5f 100%);
-        color: #fffaf1;
-        box-shadow: 0 16px 32px rgba(35, 88, 67, 0.26);
-    }
-
-    .action-btn {
-        background: rgba(255, 255, 255, 0.8);
-        color: var(--text);
-        border: 1px solid rgba(35, 88, 67, 0.12);
-    }
-
-    .action-btn.primary {
-        background: linear-gradient(135deg, #c9783f 0%, #b06032 100%);
-        color: #fff8ef;
-        border-color: transparent;
-        box-shadow: 0 16px 32px rgba(182, 96, 50, 0.22);
-    }
-
-    .status-strip {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 16px;
-    }
-
-    .status-chip {
-        display: inline-flex;
-        align-items: center;
-        min-height: 38px;
-        padding: 0 14px;
-        border-radius: 999px;
-        background: rgba(35, 88, 67, 0.07);
-        color: var(--accent-strong);
-        font-size: 0.9rem;
-    }
-
-    .output {
-        min-height: 420px;
-        padding: 22px;
-        border-radius: var(--radius-lg);
-        background:
-            linear-gradient(180deg, rgba(255, 253, 248, 0.96) 0%, rgba(250, 247, 241, 0.94) 100%);
-        border: 1px solid rgba(35, 88, 67, 0.12);
-        font-family: "STSong", "Songti SC", "Noto Serif SC", serif;
-        font-size: clamp(1.05rem, 1.2vw + 0.88rem, 1.38rem);
-        line-height: 1.95;
-        white-space: pre-wrap;
-        word-break: break-word;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
-    }
-
-    .preview-meta {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-        margin: 18px 0;
-    }
-
-    .preview-meta .metric {
-        background: rgba(35, 88, 67, 0.05);
-    }
-
-    .tips-card {
-        margin-top: 24px;
-    }
-
-    .tips-list {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-        margin-top: 18px;
+    .tips-grid {
+        grid-template-columns: 1fr;
+        margin-top: 14px;
     }
 
     .tip {
-        padding: 18px;
+        padding: 14px 16px;
         border-radius: var(--radius-md);
         background: rgba(255, 255, 255, 0.6);
         border: 1px solid rgba(35, 88, 67, 0.08);
@@ -398,17 +386,99 @@
 
     .tip strong {
         display: block;
-        margin-bottom: 8px;
-        font-size: 1rem;
+        margin-bottom: 6px;
+        font-size: 0.98rem;
+    }
+
+    .page {
+        width: min(1280px, calc(100% - 24px));
+        margin: 0 auto;
+        padding: 24px 0 40px;
+    }
+
+    .workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 0.98fr) minmax(0, 1.02fr);
+        gap: 22px;
+        align-items: start;
+    }
+
+    .editor-card,
+    .preview-card {
+        padding: 26px;
+    }
+
+    .card-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .card-head p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+    }
+
+    .card-pill {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 0.86rem;
+    }
+
+    textarea {
+        width: 100%;
+        min-height: 72vh;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--text);
+        font: 500 16px/1.82 "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
+        outline: none;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    textarea:focus {
+        border-color: rgba(35, 88, 67, 0.36);
+        box-shadow: 0 0 0 4px rgba(35, 88, 67, 0.08);
+    }
+
+    .output {
+        min-height: 72vh;
+        padding: 22px;
+        border-radius: var(--radius-lg);
+        background: linear-gradient(180deg, rgba(255, 253, 248, 0.98) 0%, rgba(248, 244, 236, 0.95) 100%);
+        border: 1px solid var(--line);
+        font-family: "STSong", "Songti SC", "Noto Serif SC", serif;
+        font-size: clamp(1.05rem, 1vw + 0.92rem, 1.36rem);
+        line-height: 1.95;
+        white-space: pre-wrap;
+        word-break: break-word;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+    }
+
+    .preview-note {
+        margin: 14px 0 0;
     }
 
     .toast {
         position: fixed;
         left: 50%;
         bottom: 24px;
-        z-index: 10;
-        transform: translate(-50%, 24px);
-        min-width: min(360px, calc(100vw - 32px));
+        z-index: 45;
+        transform: translate(-50%, 20px);
+        min-width: min(360px, calc(100vw - 24px));
         padding: 14px 18px;
         border-radius: 16px;
         background: rgba(20, 60, 46, 0.94);
@@ -425,219 +495,221 @@
         transform: translate(-50%, 0);
     }
 
-    @media (max-width: 960px) {
-        .hero,
-        .workspace,
-        .tips-list {
+    @media (max-width: 1080px) {
+        .workspace {
             grid-template-columns: 1fr;
-        }
-
-        .page {
-            width: min(100% - 20px, 1200px);
-            padding-top: 20px;
-        }
-
-        .hero-card,
-        .note-card,
-        .editor-card,
-        .preview-card,
-        .tips-card {
-            border-radius: 24px;
         }
 
         textarea,
         .output {
-            min-height: 320px;
+            min-height: 44vh;
         }
     }
 
-    @media (max-width: 680px) {
-        body {
-            background:
-                radial-gradient(circle at top left, rgba(161, 205, 170, 0.28), transparent 34%),
-                linear-gradient(180deg, #f8f4ee 0%, #f0e8dd 100%);
+    @media (max-width: 780px) {
+        .topbar-inner,
+        .page {
+            width: min(100% - 18px, 1280px);
         }
 
-        .hero-card,
-        .note-card,
+        .topbar-inner {
+            min-height: 70px;
+        }
+
+        .brand-copy p,
+        .summary-chip {
+            display: none;
+        }
+
         .editor-card,
-        .preview-card,
-        .tips-card {
+        .preview-card {
             padding: 20px;
         }
 
-        .section-head,
-        .group-label {
+        .card-head {
             flex-direction: column;
             align-items: flex-start;
         }
 
-        .interval-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+        textarea,
+        .output {
+            min-height: 36vh;
+            padding: 18px;
         }
+    }
 
-        .action-grid,
-        .preview-meta,
-        .note-grid {
+    @media (max-width: 560px) {
+        .nav-actions,
+        .metrics-grid,
+        .interval-grid {
             grid-template-columns: 1fr;
         }
 
-        textarea {
-            min-height: 280px;
-            padding: 16px;
-            font-size: 15px;
-        }
-
-        .output {
-            min-height: 280px;
-            padding: 18px;
-            font-size: 1.06rem;
-        }
-
-        .chip-link,
+        .menu-btn,
+        .close-btn,
+        .nav-link,
         .interval-btn,
         .action-btn {
             min-height: 48px;
+        }
+
+        .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
         }
     }
 </style>
 </head>
 <body>
-<div class="page">
-    <section class="hero">
-        <div class="hero-card">
-            <span class="eyebrow">TEXT MASK LAB</span>
-            <h1>中文间隔遮挡工具</h1>
-            <p class="hero-copy">
-                这个页面会自动读取同目录下的 <code>1.txt</code>，按你选择的节奏对中文字符做“显示 / 遮挡”切换，
-                适合做背词、台词分段记忆、逐步回忆训练，也能直接复制或导出当前结果。
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            <span class="brand-badge">遮挡</span>
+            <div class="brand-copy">
+                <span class="eyebrow">TEXT MASK LAB</span>
+                <h1>中文间隔遮挡工具</h1>
+                <p>主区域只保留输入和预览，其余设置都收进右侧导航菜单。</p>
+            </div>
+        </div>
+        <div class="topbar-actions">
+            <span class="summary-chip" id="topbarSummary">间隔 1 · 偏移 0</span>
+            <button class="menu-btn" type="button" id="menuBtn" aria-expanded="false" aria-controls="navDrawer">打开菜单</button>
+        </div>
+    </div>
+</header>
+
+<div class="backdrop" id="navBackdrop"></div>
+
+<aside class="nav-drawer" id="navDrawer" aria-hidden="true">
+    <div class="drawer-head">
+        <div class="drawer-copy">
+            <span class="eyebrow">导航菜单</span>
+            <h2 style="margin-top: 10px; font-size: clamp(1.4rem, 3vw, 1.9rem);">折叠信息和操作区</h2>
+            <p>除了“输入文本”和“遮挡预览”，其他模块都集中在这里，需要时展开，不需要时收起。</p>
+        </div>
+        <button class="close-btn" type="button" id="closeMenuBtn">收起</button>
+    </div>
+
+    <div class="drawer-scroll">
+        <section class="nav-panel">
+            <h3 style="font-size: 1.1rem;">工具说明</h3>
+            <p style="margin-top: 10px;">
+                页面会自动读取同目录下的 <code>1.txt</code>，按你选择的节奏对中文字符做保留和遮挡切换，
+                适合做背稿、背词、分段记忆和逐步回忆训练。
             </p>
-            <div class="hero-actions">
-                <a class="chip-link" href="#workspace">开始使用</a>
-                <a class="chip-link secondary" href="./1.txt" target="_blank" rel="noreferrer">查看原始文本</a>
+            <div class="nav-actions">
+                <a class="nav-link primary" href="#workspace">回到工作区</a>
+                <a class="nav-link" href="./1.txt" target="_blank" rel="noreferrer">查看原始文本</a>
             </div>
-        </div>
+        </section>
 
-        <aside class="note-card">
-            <div>
-                <span class="eyebrow">使用方式</span>
-                <h2 style="margin-top: 14px; font-size: clamp(1.5rem, 3vw, 2.2rem);">先选间隔，再循环切换偏移</h2>
-                <p class="hero-copy" style="margin: 14px 0 0;">
-                    点击同一个“间隔”按钮时，页面会自动切换不同遮挡形态；这样不用换页面，就能把同一段内容从不同位置开始练习。
-                </p>
+        <section class="nav-panel">
+            <h3 style="font-size: 1.1rem;">遮挡设置</h3>
+            <p style="margin-top: 10px;">重复点击同一个间隔按钮，会自动切换不同偏移形态。</p>
+            <div class="interval-grid">
+                <button class="interval-btn active" type="button" data-interval="1">间隔 1</button>
+                <button class="interval-btn" type="button" data-interval="2">间隔 2</button>
+                <button class="interval-btn" type="button" data-interval="3">间隔 3</button>
+                <button class="interval-btn" type="button" data-interval="4">间隔 4</button>
             </div>
-            <div class="note-grid">
+        </section>
+
+        <section class="nav-panel">
+            <h3 style="font-size: 1.1rem;">快捷操作</h3>
+            <p style="margin-top: 10px;">复制、导出等操作也收进菜单，主画面保持专注。</p>
+            <div class="action-grid">
+                <button class="action-btn primary" type="button" id="copyBtn">复制结果</button>
+                <button class="action-btn" type="button" id="exportCurrentBtn">导出当前</button>
+                <button class="action-btn" type="button" id="exportAllBtn">导出全部形态</button>
+            </div>
+        </section>
+
+        <section class="nav-panel">
+            <h3 style="font-size: 1.1rem;">状态数据</h3>
+            <p style="margin-top: 10px;">当前模式、加载情况和统计信息统一放在菜单里查看。</p>
+            <div class="metrics-grid">
                 <div class="metric">
-                    <span class="metric-label">默认输入</span>
-                    <strong>1.txt</strong>
-                    <small>页面加载后会自动尝试读取同目录文本。</small>
+                    <span class="metric-label">默认文本状态</span>
+                    <strong id="loadStatus">正在加载</strong>
+                    <small>页面会自动尝试读取 1.txt。</small>
                 </div>
                 <div class="metric">
-                    <span class="metric-label">导出方式</span>
-                    <strong>.txt</strong>
-                    <small>支持单个当前版本，或一次导出全部形态。</small>
+                    <span class="metric-label">当前间隔</span>
+                    <strong id="intervalStatus">1</strong>
+                    <small>与当前遮挡节奏同步更新。</small>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">当前偏移</span>
+                    <strong id="offsetStatus">0 / 1</strong>
+                    <small>重复点击同间隔时会变化。</small>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">可切换形态</span>
+                    <strong id="variantStatus">2 种</strong>
+                    <small>会随着间隔大小变化。</small>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">中文字符数</span>
+                    <strong id="chineseCount">0</strong>
+                    <small>当前输入中识别到的中文总量。</small>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">已遮挡字符数</span>
+                    <strong id="maskedCount">0</strong>
+                    <small>方便判断当前练习难度。</small>
                 </div>
             </div>
-        </aside>
-    </section>
+        </section>
 
+        <section class="nav-panel">
+            <h3 style="font-size: 1.1rem;">使用提示</h3>
+            <div class="tips-grid">
+                <div class="tip">
+                    <strong>适合背稿练习</strong>
+                    <span class="helper">可以从不同起始位置轮换遮挡，减少机械记忆。</span>
+                </div>
+                <div class="tip">
+                    <strong>手机更清爽</strong>
+                    <span class="helper">主区域少了说明和按钮，更容易专注看文本和预览。</span>
+                </div>
+                <div class="tip">
+                    <strong>桌面更聚焦</strong>
+                    <span class="helper">输入和预览并排展示，菜单只在需要时打开。</span>
+                </div>
+            </div>
+        </section>
+    </div>
+</aside>
+
+<main class="page">
     <section class="workspace" id="workspace">
-        <div class="editor-card">
-            <div class="section-head">
+        <section class="editor-card">
+            <div class="card-head">
                 <div>
-                    <h2 style="font-size: clamp(1.45rem, 3vw, 2rem);">输入文本</h2>
-                    <p>你可以直接编辑、粘贴或替换内容，输出区会实时更新。</p>
+                    <span class="eyebrow">输入文本</span>
+                    <h2 style="margin-top: 10px; font-size: clamp(1.55rem, 3vw, 2.15rem);">编辑原文</h2>
+                    <p>你可以直接编辑、粘贴或替换内容，右侧预览会实时更新。</p>
                 </div>
-                <span class="pill" id="loadStatus">正在加载默认文本...</span>
+                <span class="card-pill">常驻显示</span>
             </div>
-
             <textarea id="inputText" placeholder="正在加载 1.txt..."></textarea>
+        </section>
 
-            <div class="control-group">
-                <div class="group-label">
-                    <span>选择遮挡节奏</span>
-                    <span class="helper">重复点击同一个按钮，会轮换不同偏移形态</span>
+        <section class="preview-card">
+            <div class="card-head">
+                <div>
+                    <span class="eyebrow">遮挡预览</span>
+                    <h2 style="margin-top: 10px; font-size: clamp(1.55rem, 3vw, 2.15rem);">实时结果</h2>
+                    <p>这里只保留核心输出，统计与操作已经移动到导航菜单里。</p>
                 </div>
-                <div class="interval-grid">
-                    <button class="interval-btn active" type="button" data-interval="1">间隔 1</button>
-                    <button class="interval-btn" type="button" data-interval="2">间隔 2</button>
-                    <button class="interval-btn" type="button" data-interval="3">间隔 3</button>
-                    <button class="interval-btn" type="button" data-interval="4">间隔 4</button>
-                </div>
+                <span class="card-pill">常驻显示</span>
             </div>
-
-            <div class="control-group">
-                <div class="group-label">
-                    <span>快捷操作</span>
-                    <span class="helper">手机上按钮更大，方便点按；桌面端则保持并排高效操作。</span>
-                </div>
-                <div class="action-grid">
-                    <button class="action-btn primary" type="button" id="copyBtn">复制结果</button>
-                    <button class="action-btn" type="button" id="exportCurrentBtn">导出当前</button>
-                    <button class="action-btn" type="button" id="exportAllBtn">导出全部形态</button>
-                </div>
-            </div>
-
-            <div class="status-strip">
-                <span class="status-chip" id="intervalStatus">当前间隔：1</span>
-                <span class="status-chip" id="offsetStatus">当前偏移：0 / 1</span>
-                <span class="status-chip" id="variantStatus">可切换形态：2 种</span>
-            </div>
-        </div>
-
-        <div>
-            <section class="preview-card">
-                <div class="section-head">
-                    <div>
-                        <h2 style="font-size: clamp(1.45rem, 3vw, 2rem);">遮挡预览</h2>
-                        <p>输出中仅遮挡中文字符，标点、空格和非中文内容会保持原样。</p>
-                    </div>
-                    <span class="pill">实时生成</span>
-                </div>
-
-                <div class="preview-meta">
-                    <div class="metric">
-                        <span class="metric-label">中文字符数</span>
-                        <strong id="chineseCount">0</strong>
-                        <small>当前输入里识别到的中文总量。</small>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">已遮挡字符数</span>
-                        <strong id="maskedCount">0</strong>
-                        <small>方便快速判断当前练习难度。</small>
-                    </div>
-                </div>
-
-                <div class="output" id="outputText"></div>
-                <p class="status-line" style="margin-top: 14px;" id="outputHint">
-                    页面加载完成后会自动显示处理结果。
-                </p>
-            </section>
-
-            <section class="tips-card">
-                <h3 style="font-size: 1.35rem;">这个工具现在在做什么</h3>
-                <p style="margin-top: 10px;">
-                    它本质上是一个“按固定节奏隐藏中文字符”的练习页。你选定间隔后，系统会在中文字符序列里保留一段、遮挡一段；
-                    当你再次点击同一个间隔时，就会把起始位置往后挪，得到另一种训练版本。
-                </p>
-                <div class="tips-list">
-                    <div class="tip">
-                        <strong>适合记忆练习</strong>
-                        <span>背稿、背词、逐句回忆时很好用，不必手动改文档。</span>
-                    </div>
-                    <div class="tip">
-                        <strong>适合手机操作</strong>
-                        <span>按钮和间距已经放大，单手点击也更稳。</span>
-                    </div>
-                    <div class="tip">
-                        <strong>适合桌面查看</strong>
-                        <span>输入与预览分栏排布，改字和观察结果能同时进行。</span>
-                    </div>
-                </div>
-            </section>
-        </div>
+            <div class="output" id="outputText"></div>
+            <p class="preview-note" id="outputHint">页面加载完成后会自动显示处理结果。</p>
+        </section>
     </section>
-</div>
+</main>
 
 <div class="toast" id="toast"></div>
 
@@ -655,7 +727,12 @@ const variantStatus = document.getElementById("variantStatus");
 const chineseCount = document.getElementById("chineseCount");
 const maskedCount = document.getElementById("maskedCount");
 const outputHint = document.getElementById("outputHint");
+const topbarSummary = document.getElementById("topbarSummary");
 const toast = document.getElementById("toast");
+const navDrawer = document.getElementById("navDrawer");
+const navBackdrop = document.getElementById("navBackdrop");
+const menuBtn = document.getElementById("menuBtn");
+const closeMenuBtn = document.getElementById("closeMenuBtn");
 const intervalButtons = Array.from(document.querySelectorAll(".interval-btn"));
 
 function isChinese(char) {
@@ -671,6 +748,17 @@ function showToast(message) {
     }, 2200);
 }
 
+function toggleDrawer(forceOpen) {
+    const shouldOpen = typeof forceOpen === "boolean"
+        ? forceOpen
+        : !navDrawer.classList.contains("open");
+
+    navDrawer.classList.toggle("open", shouldOpen);
+    navBackdrop.classList.toggle("visible", shouldOpen);
+    navDrawer.setAttribute("aria-hidden", String(!shouldOpen));
+    menuBtn.setAttribute("aria-expanded", String(shouldOpen));
+}
+
 function updateIntervalButtons() {
     intervalButtons.forEach((button) => {
         const buttonInterval = Number(button.dataset.interval);
@@ -680,11 +768,12 @@ function updateIntervalButtons() {
 
 function updateStatus(totalChinese, maskedChinese) {
     const variantTotal = currentInterval * 2;
-    intervalStatus.innerText = `当前间隔：${currentInterval}`;
-    offsetStatus.innerText = `当前偏移：${offset} / ${variantTotal - 1}`;
-    variantStatus.innerText = `可切换形态：${variantTotal} 种`;
-    chineseCount.innerText = totalChinese;
-    maskedCount.innerText = maskedChinese;
+    intervalStatus.innerText = String(currentInterval);
+    offsetStatus.innerText = `${offset} / ${variantTotal - 1}`;
+    variantStatus.innerText = `${variantTotal} 种`;
+    chineseCount.innerText = String(totalChinese);
+    maskedCount.innerText = String(maskedChinese);
+    topbarSummary.innerText = `间隔 ${currentInterval} · 偏移 ${offset}`;
     outputHint.innerText = totalChinese === 0
         ? "当前内容里没有检测到中文字符，因此不会出现遮挡效果。"
         : `当前方案会遮挡 ${maskedChinese} 个中文字符，适合做分段回忆练习。`;
@@ -783,11 +872,11 @@ async function loadDefaultTXT() {
 
         const text = await response.text();
         inputText.value = text;
-        loadStatus.innerText = "已加载默认文本";
+        loadStatus.innerText = "已加载";
         processText();
     } catch (error) {
         inputText.value = "⚠️ 未找到 1.txt，请确认文件已上传到当前目录。";
-        loadStatus.innerText = "默认文本加载失败";
+        loadStatus.innerText = "加载失败";
         processText();
     }
 }
@@ -796,6 +885,15 @@ intervalButtons.forEach((button) => {
     button.addEventListener("click", () => {
         setIntervalMask(Number(button.dataset.interval));
     });
+});
+
+menuBtn.addEventListener("click", () => toggleDrawer(true));
+closeMenuBtn.addEventListener("click", () => toggleDrawer(false));
+navBackdrop.addEventListener("click", () => toggleDrawer(false));
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        toggleDrawer(false);
+    }
 });
 
 document.getElementById("copyBtn").addEventListener("click", copyResult);

@@ -479,6 +479,72 @@
         font-size: 0.92rem;
     }
 
+    .field-group {
+        margin-top: 14px;
+    }
+
+    .field-label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--accent-deep);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .field-help {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.6;
+    }
+
+    .control-select,
+    .control-input {
+        width: 100%;
+        min-height: 46px;
+        padding: 10px 12px;
+        border: 1px solid rgba(35, 88, 67, 0.12);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.88);
+        color: var(--text);
+        font: inherit;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .control-select:focus,
+    .control-input:focus {
+        border-color: rgba(35, 88, 67, 0.34);
+        box-shadow: 0 0 0 3px rgba(35, 88, 67, 0.08);
+    }
+
+    .mask-preview {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(35, 88, 67, 0.06);
+        color: var(--accent-deep);
+    }
+
+    .mask-preview-code {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 56px;
+        min-height: 36px;
+        padding: 0 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(35, 88, 67, 0.1);
+        font-family: "Consolas", "SFMono-Regular", monospace;
+        font-size: 1rem;
+    }
+
     .preview-controls .interval-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
         margin-top: 12px;
@@ -853,6 +919,28 @@
                             <button class="interval-btn" type="button" data-interval="3">间隔 3</button>
                             <button class="interval-btn" type="button" data-interval="4">间隔 4</button>
                         </div>
+                        <div class="field-group">
+                            <label class="field-label" for="maskTokenSelect">替换字符</label>
+                            <select class="control-select" id="maskTokenSelect">
+                                <option value="⬛">⬛ 大黑方框</option>
+                                <option value="■">■ 黑方块</option>
+                                <option value="□">□ 空心方块</option>
+                                <option value="█">█ 实心块</option>
+                                <option value="*">* 星号</option>
+                                <option value="__">__ 双下划线</option>
+                                <option value="——">—— 双长横线</option>
+                                <option value="？">？ 问号</option>
+                                <option value="○">○ 圆圈</option>
+                                <option value=" ">空格</option>
+                                <option value="__custom__">自定义</option>
+                            </select>
+                            <input class="control-input" id="customMaskInput" type="text" placeholder="输入自定义单字符或多字符" style="margin-top: 10px; display: none;">
+                            <span class="field-help">支持单字符或多字符，例如 `***`、`[遮挡]`、`____`。</span>
+                            <div class="mask-preview">
+                                <span>当前替换字符预览</span>
+                                <span class="mask-preview-code" id="maskTokenPreview">⬛</span>
+                            </div>
+                        </div>
                     </section>
                     <section class="control-panel">
                         <h3>快捷操作</h3>
@@ -877,6 +965,7 @@
 let currentInterval = 1;
 let offset = 0;
 let toastTimer = null;
+let maskToken = "⬛";
 
 const inputText = document.getElementById("inputText");
 const outputText = document.getElementById("outputText");
@@ -893,6 +982,9 @@ const navDrawer = document.getElementById("navDrawer");
 const navBackdrop = document.getElementById("navBackdrop");
 const menuBtn = document.getElementById("menuBtn");
 const closeMenuBtn = document.getElementById("closeMenuBtn");
+const maskTokenSelect = document.getElementById("maskTokenSelect");
+const customMaskInput = document.getElementById("customMaskInput");
+const maskTokenPreview = document.getElementById("maskTokenPreview");
 const intervalButtons = Array.from(document.querySelectorAll(".interval-btn"));
 
 function isChinese(char) {
@@ -933,10 +1025,26 @@ function updateStatus(totalChinese, maskedChinese) {
     variantStatus.innerText = `${variantTotal} 种`;
     chineseCount.innerText = String(totalChinese);
     maskedCount.innerText = String(maskedChinese);
-    topbarSummary.innerText = `间隔 ${currentInterval} · 偏移 ${offset}`;
+    topbarSummary.innerText = `间隔 ${currentInterval} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken}`;
     outputHint.innerText = totalChinese === 0
         ? "当前内容里没有检测到中文字符，因此不会出现遮挡效果。"
-        : `当前方案会遮挡 ${maskedChinese} 个中文字符，适合做分段回忆练习。`;
+        : `当前方案会遮挡 ${maskedChinese} 个中文字符，当前替换字符为「${maskToken === " " ? "空格" : maskToken}」。`;
+    maskTokenPreview.innerText = maskToken === " " ? "空格" : maskToken;
+}
+
+function resolveMaskToken() {
+    if (maskTokenSelect.value === "__custom__") {
+        const customValue = customMaskInput.value;
+        return customValue.length > 0 ? customValue : "⬛";
+    }
+
+    return maskTokenSelect.value;
+}
+
+function updateMaskToken() {
+    const useCustom = maskTokenSelect.value === "__custom__";
+    customMaskInput.style.display = useCustom ? "block" : "none";
+    maskToken = resolveMaskToken();
 }
 
 function generateText(interval, off) {
@@ -950,7 +1058,7 @@ function generateText(interval, off) {
             if ((chineseIndex + off) % (2 * interval) < interval) {
                 result += char;
             } else {
-                result += "⬛";
+                result += maskToken;
                 maskedChinese++;
             }
             chineseIndex++;
@@ -1047,6 +1155,15 @@ intervalButtons.forEach((button) => {
     });
 });
 
+maskTokenSelect.addEventListener("change", () => {
+    updateMaskToken();
+    processText();
+});
+customMaskInput.addEventListener("input", () => {
+    updateMaskToken();
+    processText();
+});
+
 menuBtn.addEventListener("click", () => toggleDrawer(true));
 closeMenuBtn.addEventListener("click", () => toggleDrawer(false));
 navBackdrop.addEventListener("click", () => toggleDrawer(false));
@@ -1061,6 +1178,7 @@ document.getElementById("exportCurrentBtn").addEventListener("click", () => expo
 document.getElementById("exportAllBtn").addEventListener("click", () => exportTXT(true));
 inputText.addEventListener("input", processText);
 
+updateMaskToken();
 processText();
 loadDefaultTXT();
 </script>

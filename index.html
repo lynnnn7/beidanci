@@ -545,6 +545,25 @@
         font-size: 1rem;
     }
 
+    .toggle-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(35, 88, 67, 0.06);
+        color: var(--accent-deep);
+        font-size: 0.92rem;
+    }
+
+    .toggle-option input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent);
+        flex-shrink: 0;
+    }
+
     .preview-controls .interval-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
         margin-top: 12px;
@@ -626,6 +645,32 @@
     .toast.visible {
         opacity: 1;
         transform: translate(-50%, 0);
+    }
+
+    .floating-toggle-btn {
+        position: fixed;
+        right: 18px;
+        bottom: 92px;
+        z-index: 44;
+        min-height: 48px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(35, 88, 67, 0.3);
+        color: #fffaf2;
+        box-shadow: 0 12px 24px rgba(20, 60, 46, 0.14);
+        backdrop-filter: blur(10px);
+        cursor: pointer;
+        transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    }
+
+    .floating-toggle-btn:hover {
+        opacity: 0.72;
+        transform: translateY(-1px);
+    }
+
+    .floating-toggle-btn.hidden {
+        display: none;
     }
 
     @media (max-width: 1080px) {
@@ -780,6 +825,11 @@
 
         .preview-controls {
             padding: 14px;
+        }
+
+        .floating-toggle-btn {
+            right: 12px;
+            bottom: 84px;
         }
     }
 </style>
@@ -950,6 +1000,10 @@
                             <button class="action-btn" type="button" id="exportCurrentBtn">导出当前</button>
                             <button class="action-btn" type="button" id="exportAllBtn">导出全部形态</button>
                         </div>
+                        <label class="toggle-option" for="floatingToggleEnabled">
+                            <input type="checkbox" id="floatingToggleEnabled">
+                            <span>启用悬浮按钮，点击即可在遮挡 / 原文之间切换</span>
+                        </label>
                     </section>
                 </div>
             </div>
@@ -959,6 +1013,7 @@
     </section>
 </main>
 
+<button class="floating-toggle-btn hidden" type="button" id="floatingToggleBtn">查看原文</button>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -966,6 +1021,7 @@ let currentInterval = 1;
 let offset = 0;
 let toastTimer = null;
 let maskToken = "⬛";
+let previewMode = "masked";
 
 const inputText = document.getElementById("inputText");
 const outputText = document.getElementById("outputText");
@@ -985,6 +1041,8 @@ const closeMenuBtn = document.getElementById("closeMenuBtn");
 const maskTokenSelect = document.getElementById("maskTokenSelect");
 const customMaskInput = document.getElementById("customMaskInput");
 const maskTokenPreview = document.getElementById("maskTokenPreview");
+const floatingToggleEnabled = document.getElementById("floatingToggleEnabled");
+const floatingToggleBtn = document.getElementById("floatingToggleBtn");
 const intervalButtons = Array.from(document.querySelectorAll(".interval-btn"));
 
 function isChinese(char) {
@@ -1025,11 +1083,12 @@ function updateStatus(totalChinese, maskedChinese) {
     variantStatus.innerText = `${variantTotal} 种`;
     chineseCount.innerText = String(totalChinese);
     maskedCount.innerText = String(maskedChinese);
-    topbarSummary.innerText = `间隔 ${currentInterval} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken}`;
+    topbarSummary.innerText = `间隔 ${currentInterval} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken} · ${previewMode === "masked" ? "遮挡" : "原文"}`;
     outputHint.innerText = totalChinese === 0
         ? "当前内容里没有检测到中文字符，因此不会出现遮挡效果。"
-        : `当前方案会遮挡 ${maskedChinese} 个中文字符，当前替换字符为「${maskToken === " " ? "空格" : maskToken}」。`;
+        : `当前方案会遮挡 ${maskedChinese} 个中文字符，当前替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
     maskTokenPreview.innerText = maskToken === " " ? "空格" : maskToken;
+    floatingToggleBtn.innerText = previewMode === "masked" ? "查看原文" : "查看遮挡";
 }
 
 function resolveMaskToken() {
@@ -1045,6 +1104,11 @@ function updateMaskToken() {
     const useCustom = maskTokenSelect.value === "__custom__";
     customMaskInput.style.display = useCustom ? "block" : "none";
     maskToken = resolveMaskToken();
+}
+
+function setPreviewMode(mode) {
+    previewMode = mode;
+    updateStatus(Number(chineseCount.innerText || 0), Number(maskedCount.innerText || 0));
 }
 
 function generateText(interval, off) {
@@ -1076,7 +1140,7 @@ function generateText(interval, off) {
 
 function processText() {
     const generated = generateText(currentInterval, offset);
-    outputText.innerText = generated.result;
+    outputText.innerText = previewMode === "masked" ? generated.result : inputText.value;
     updateStatus(generated.totalChinese, generated.maskedChinese);
     updateIntervalButtons();
 }
@@ -1116,7 +1180,7 @@ function exportTXT(allVariants) {
             content += generateText(currentInterval, i).result + "\n\n";
         }
     } else {
-        content = generateText(currentInterval, offset).result;
+        content = outputText.innerText;
     }
 
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -1129,6 +1193,18 @@ function exportTXT(allVariants) {
     URL.revokeObjectURL(link.href);
 
     showToast(allVariants ? "已导出全部形态。" : "已导出当前形态。");
+}
+
+function updateFloatingToggleVisibility() {
+    const enabled = floatingToggleEnabled.checked;
+    floatingToggleBtn.classList.toggle("hidden", !enabled);
+
+    if (!enabled && previewMode !== "masked") {
+        previewMode = "masked";
+        processText();
+    } else if (enabled) {
+        updateStatus(Number(chineseCount.innerText || 0), Number(maskedCount.innerText || 0));
+    }
 }
 
 async function loadDefaultTXT() {
@@ -1161,6 +1237,11 @@ maskTokenSelect.addEventListener("change", () => {
 });
 customMaskInput.addEventListener("input", () => {
     updateMaskToken();
+    processText();
+});
+floatingToggleEnabled.addEventListener("change", updateFloatingToggleVisibility);
+floatingToggleBtn.addEventListener("click", () => {
+    previewMode = previewMode === "masked" ? "original" : "masked";
     processText();
 });
 

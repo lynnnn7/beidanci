@@ -1135,6 +1135,11 @@
                     <strong id="patternStatus">固定间隔</strong>
                     <small>显示当前生效的遮挡方式。</small>
                 </div>
+                <div class="metric">
+                    <span class="metric-label">练习范围</span>
+                    <strong id="segmentMetric">全文</strong>
+                    <small>开启分段练习后，这里会显示当前段落位置。</small>
+                </div>
             </div>
         </section>
 
@@ -1270,6 +1275,17 @@
                             </div>
                             <span class="field-help" id="progressiveStatus">当前使用普通模式，直接按上方比例生效。</span>
                         </div>
+                        <div class="field-group">
+                            <label class="toggle-option" for="segmentPracticeEnabled">
+                                <input type="checkbox" id="segmentPracticeEnabled">
+                                <span>分段练习：长文按段落或句组切开，只专注当前一段</span>
+                            </label>
+                            <div class="action-grid hidden" id="segmentActions" style="margin-top: 12px;">
+                                <button class="action-btn" type="button" id="segmentPrevBtn">上一段</button>
+                                <button class="action-btn primary" type="button" id="segmentNextBtn">下一段</button>
+                            </div>
+                            <span class="field-help" id="segmentStatus">当前按全文练习，适合快速通读。</span>
+                        </div>
                     </section>
                 </div>
             </div>
@@ -1293,6 +1309,8 @@ let randomSeed = Date.now();
 let maskRatio = 0.5;
 let progressiveMode = false;
 let progressiveCurrentRatio = 0.2;
+let segmentPracticeMode = false;
+let activeSegmentIndex = 0;
 const HISTORY_LIMIT = 6;
 const HISTORY_STORAGE_KEY = "text-mask-history-v1";
 
@@ -1308,6 +1326,7 @@ const totalCharCount = document.getElementById("totalCharCount");
 const visibleCount = document.getElementById("visibleCount");
 const maskedRate = document.getElementById("maskedRate");
 const patternStatus = document.getElementById("patternStatus");
+const segmentMetric = document.getElementById("segmentMetric");
 const outputHint = document.getElementById("outputHint");
 const topbarSummary = document.getElementById("topbarSummary");
 const toast = document.getElementById("toast");
@@ -1329,6 +1348,11 @@ const progressiveActions = document.getElementById("progressiveActions");
 const progressiveAdvanceBtn = document.getElementById("progressiveAdvanceBtn");
 const progressiveResetBtn = document.getElementById("progressiveResetBtn");
 const progressiveStatus = document.getElementById("progressiveStatus");
+const segmentPracticeEnabled = document.getElementById("segmentPracticeEnabled");
+const segmentActions = document.getElementById("segmentActions");
+const segmentPrevBtn = document.getElementById("segmentPrevBtn");
+const segmentNextBtn = document.getElementById("segmentNextBtn");
+const segmentStatus = document.getElementById("segmentStatus");
 const floatingToggleBtn = document.getElementById("floatingToggleBtn");
 const historyList = document.getElementById("historyList");
 const historyEmpty = document.getElementById("historyEmpty");
@@ -1366,10 +1390,10 @@ function updateIntervalButtons() {
     });
 }
 
-function updateStatus(totalChinese, maskedChinese) {
+function updateStatus(totalChinese, maskedChinese, sourceText) {
     const cycleStats = getMaskCycleStats();
     const variantTotal = cycleStats.total;
-    const totalChars = Array.from(inputText.value).length;
+    const totalChars = Array.from(sourceText).length;
     const visibleChinese = Math.max(totalChinese - maskedChinese, 0);
     const ratio = totalChinese === 0 ? 0 : Math.round((maskedChinese / totalChinese) * 100);
     intervalStatus.innerText = String(currentInterval);
@@ -1387,14 +1411,16 @@ function updateStatus(totalChinese, maskedChinese) {
     visibleCount.innerText = String(visibleChinese);
     maskedRate.innerText = `${ratio}%`;
     patternStatus.innerText = getMaskPatternLabel();
-    topbarSummary.innerText = `${getMaskPatternLabel()} · 偏移 ${offset} · ${maskToken === " " ? "空格" : maskToken} · ${previewMode === "masked" ? "遮挡" : "原文"}`;
+    segmentMetric.innerText = getSegmentLabel();
+    topbarSummary.innerText = `${getSegmentLabel()} · ${getMaskPatternLabel()} · ${maskToken === " " ? "空格" : maskToken} · ${previewMode === "masked" ? "遮挡" : "原文"}`;
     outputHint.innerText = totalChinese === 0
         ? "当前内容里没有检测到中文字符，因此不会出现遮挡效果。"
-        : `当前方案会遮挡 ${maskedChinese} 个中文字符，占中文总量的 ${ratio}%，规则为${getMaskPatternLabel()}，替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
+        : `当前方案会遮挡 ${maskedChinese} 个中文字符，占中文总量的 ${ratio}%，练习范围为${getSegmentLabel()}，规则为${getMaskPatternLabel()}，替换字符为「${maskToken === " " ? "空格" : maskToken}」，目前显示为${previewMode === "masked" ? "遮挡版" : "原文版"}。`;
     maskTokenPreview.innerText = maskToken === " " ? "空格" : maskToken;
     floatingToggleBtn.innerText = previewMode === "masked" ? "查看原文" : "查看遮挡";
     rerollRandomBtn.classList.toggle("hidden", maskPattern !== "random");
     maskRatioValue.innerText = `${Math.round(maskRatio * 100)}%`;
+    refreshSegmentPracticeStatus();
 }
 
 function resolveMaskToken() {
@@ -1526,6 +1552,8 @@ function buildHistoryEntry() {
         mobilePracticeEnabled: mobilePracticeEnabled.checked,
         progressiveModeEnabled: progressiveModeEnabled.checked,
         progressiveCurrentRatio,
+        segmentPracticeEnabled: segmentPracticeEnabled.checked,
+        activeSegmentIndex,
         previewMode
     };
 }
@@ -1596,6 +1624,8 @@ function saveCurrentToHistory() {
         && latestEntry.mobilePracticeEnabled === nextEntry.mobilePracticeEnabled
         && latestEntry.progressiveModeEnabled === nextEntry.progressiveModeEnabled
         && latestEntry.progressiveCurrentRatio === nextEntry.progressiveCurrentRatio
+        && latestEntry.segmentPracticeEnabled === nextEntry.segmentPracticeEnabled
+        && latestEntry.activeSegmentIndex === nextEntry.activeSegmentIndex
         && latestEntry.previewMode === nextEntry.previewMode;
 
     historyEntries = isSameAsLatest
@@ -1622,14 +1652,17 @@ function applyHistoryEntry(entry) {
     floatingToggleEnabled.checked = Boolean(entry.floatingToggleEnabled);
     mobilePracticeEnabled.checked = Boolean(entry.mobilePracticeEnabled);
     progressiveModeEnabled.checked = Boolean(entry.progressiveModeEnabled);
+    segmentPracticeEnabled.checked = Boolean(entry.segmentPracticeEnabled);
     previewMode = entry.previewMode === "original" ? "original" : "masked";
     progressiveCurrentRatio = Number(entry.progressiveCurrentRatio) || 0.2;
+    activeSegmentIndex = Number(entry.activeSegmentIndex) || 0;
     updateMaskToken();
     updateMaskPattern();
     updateMaskRatio();
     updateFloatingToggleVisibility();
     updateMobilePracticeMode();
     updateProgressiveMode();
+    updateSegmentPracticeMode();
     processText();
 }
 
@@ -1728,7 +1761,7 @@ function pseudoRandom(index, seed) {
 }
 
 function generateIntervalText(interval, off) {
-    const input = inputText.value;
+    const input = getPracticeSourceText();
     let result = "";
     let chineseIndex = 0;
     let maskedChinese = 0;
@@ -1755,7 +1788,7 @@ function generateIntervalText(interval, off) {
 }
 
 function generateRandomText() {
-    const input = inputText.value;
+    const input = getPracticeSourceText();
     const activeRatio = getEffectiveMaskRatio();
     let result = "";
     let chineseIndex = 0;
@@ -1872,8 +1905,96 @@ function buildSentenceSegments(input) {
     return segments;
 }
 
+function splitPracticeSegments(input) {
+    const paragraphs = input
+        .split(/\n\s*\n+/)
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+
+    if (paragraphs.length > 1) {
+        return paragraphs;
+    }
+
+    const sentencePieces = buildSentenceSegments(input)
+        .map((segment) => segment.text.trim())
+        .filter(Boolean);
+
+    if (sentencePieces.length <= 3) {
+        return [input];
+    }
+
+    const chunkedSegments = [];
+    let buffer = "";
+
+    sentencePieces.forEach((piece, index) => {
+        buffer += piece;
+        if ((index + 1) % 3 === 0) {
+            chunkedSegments.push(buffer.trim());
+            buffer = "";
+        }
+    });
+
+    if (buffer.trim()) {
+        chunkedSegments.push(buffer.trim());
+    }
+
+    return chunkedSegments.length > 0 ? chunkedSegments : [input];
+}
+
+function getPracticeSegments() {
+    const sourceText = inputText.value;
+
+    if (!segmentPracticeMode) {
+        return [sourceText];
+    }
+
+    const segments = splitPracticeSegments(sourceText);
+    return segments.length > 0 ? segments : [sourceText];
+}
+
+function getSegmentLabel() {
+    const segments = getPracticeSegments();
+    return segmentPracticeMode ? `第 ${activeSegmentIndex + 1} / ${segments.length} 段` : "全文";
+}
+
+function getPracticeSourceText() {
+    const segments = getPracticeSegments();
+    activeSegmentIndex = Math.min(Math.max(activeSegmentIndex, 0), Math.max(segments.length - 1, 0));
+    return segments[activeSegmentIndex] || "";
+}
+
+function refreshSegmentPracticeStatus() {
+    const segments = getPracticeSegments();
+    activeSegmentIndex = Math.min(Math.max(activeSegmentIndex, 0), Math.max(segments.length - 1, 0));
+    segmentActions.classList.toggle("hidden", !segmentPracticeMode);
+    segmentPrevBtn.disabled = !segmentPracticeMode || activeSegmentIndex === 0;
+    segmentNextBtn.disabled = !segmentPracticeMode || activeSegmentIndex >= segments.length - 1;
+    segmentStatus.innerText = segmentPracticeMode
+        ? `当前聚焦 ${activeSegmentIndex + 1} / ${segments.length} 段。优先按空行分段；如果没有空行，会自动每 3 句切一段。`
+        : "当前按全文练习，适合快速通读。";
+}
+
+function updateSegmentPracticeMode(showFeedback) {
+    segmentPracticeMode = segmentPracticeEnabled.checked;
+    if (!segmentPracticeMode) {
+        activeSegmentIndex = 0;
+    }
+    refreshSegmentPracticeStatus();
+
+    if (showFeedback) {
+        showToast(segmentPracticeMode ? "已开启分段练习。" : "已切回全文练习。");
+    }
+}
+
+function moveSegment(step) {
+    const segments = getPracticeSegments();
+    activeSegmentIndex = Math.min(Math.max(activeSegmentIndex + step, 0), Math.max(segments.length - 1, 0));
+    refreshSegmentPracticeStatus();
+    processText();
+}
+
 function generateSegmentText(segmentBuilder, interval, off) {
-    const segments = segmentBuilder(inputText.value);
+    const segments = segmentBuilder(getPracticeSourceText());
     let result = "";
     let segmentIndex = 0;
     let totalChinese = 0;
@@ -1921,9 +2042,10 @@ function generateText(interval, off) {
 }
 
 function processText() {
+    const sourceText = getPracticeSourceText();
     const generated = generateText(currentInterval, offset);
-    outputText.innerText = previewMode === "masked" ? generated.result : inputText.value;
-    updateStatus(generated.totalChinese, generated.maskedChinese);
+    outputText.innerText = previewMode === "masked" ? generated.result : sourceText;
+    updateStatus(generated.totalChinese, generated.maskedChinese, sourceText);
     updateIntervalButtons();
 }
 
@@ -2062,6 +2184,12 @@ progressiveResetBtn.addEventListener("click", () => {
     processText();
     showToast("难度已回到起步阶段。");
 });
+segmentPracticeEnabled.addEventListener("change", () => {
+    updateSegmentPracticeMode(true);
+    processText();
+});
+segmentPrevBtn.addEventListener("click", () => moveSegment(-1));
+segmentNextBtn.addEventListener("click", () => moveSegment(1));
 floatingToggleBtn.addEventListener("click", () => {
     previewMode = previewMode === "masked" ? "original" : "masked";
     processText();
@@ -2099,6 +2227,7 @@ updateMaskPattern();
 updateMaskRatio();
 updateMobilePracticeMode();
 updateProgressiveMode();
+updateSegmentPracticeMode();
 processText();
 loadDefaultTXT();
 </script>

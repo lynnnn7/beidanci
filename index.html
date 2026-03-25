@@ -140,6 +140,7 @@
         display: flex;
         align-items: center;
         gap: 12px;
+        flex-shrink: 0;
     }
 
     .summary-chip,
@@ -175,6 +176,7 @@
         background: linear-gradient(135deg, var(--accent) 0%, #3f7f66 100%);
         color: #fffaf2;
         box-shadow: 0 16px 30px rgba(35, 88, 67, 0.24);
+        white-space: nowrap;
     }
 
     .menu-btn:hover,
@@ -216,6 +218,7 @@
         box-shadow: -18px 0 48px rgba(20, 36, 29, 0.18);
         transform: translateX(104%);
         transition: transform 0.28s ease;
+        overflow: hidden;
     }
 
     .nav-drawer.open {
@@ -238,10 +241,12 @@
     }
 
     .drawer-scroll {
+        min-height: 0;
         overflow: auto;
         padding-right: 4px;
         display: grid;
         gap: 14px;
+        align-content: start;
     }
 
     .nav-panel,
@@ -422,6 +427,49 @@
         line-height: 1.7;
     }
 
+    .preview-controls {
+        margin-bottom: 18px;
+        padding: 18px;
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.62);
+        border: 1px solid rgba(35, 88, 67, 0.08);
+    }
+
+    .preview-controls-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 14px;
+    }
+
+    .control-panel {
+        padding: 16px;
+        border-radius: var(--radius-md);
+        background: rgba(255, 253, 248, 0.82);
+        border: 1px solid rgba(35, 88, 67, 0.08);
+    }
+
+    .control-panel h3 {
+        font-size: 1rem;
+    }
+
+    .control-panel p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.65;
+        font-size: 0.92rem;
+    }
+
+    .preview-controls .interval-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-top: 12px;
+    }
+
+    .preview-controls .action-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 12px;
+    }
+
     .card-pill {
         flex-shrink: 0;
         display: inline-flex;
@@ -514,11 +562,27 @@
 
         .topbar-inner {
             min-height: 70px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
         }
 
         .brand-copy p,
         .summary-chip {
             display: none;
+        }
+
+        .brand {
+            min-width: 0;
+        }
+
+        .brand-copy h1 {
+            font-size: 1rem;
+        }
+
+        .menu-btn {
+            padding: 0 14px;
+            font-size: 0.92rem;
         }
 
         .editor-card,
@@ -536,12 +600,20 @@
             min-height: 36vh;
             padding: 18px;
         }
+
+        .preview-controls-grid,
+        .preview-controls .action-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .preview-controls .interval-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 560px) {
         .nav-actions,
-        .metrics-grid,
-        .interval-grid {
+        .metrics-grid {
             grid-template-columns: 1fr;
         }
 
@@ -557,6 +629,38 @@
             width: 42px;
             height: 42px;
             border-radius: 14px;
+        }
+
+        .nav-drawer {
+            width: 100vw;
+            height: 100dvh;
+            padding: 12px;
+            border-left: 0;
+            border-radius: 0;
+        }
+
+        .drawer-head {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding-bottom: 10px;
+            background: rgba(255, 251, 246, 0.96);
+        }
+
+        .drawer-copy h2 {
+            font-size: 1.2rem !important;
+        }
+
+        .drawer-copy p {
+            font-size: 0.88rem;
+        }
+
+        .nav-panel {
+            padding: 16px;
+        }
+
+        .preview-controls {
+            padding: 14px;
         }
     }
 </style>
@@ -601,27 +705,6 @@
             <div class="nav-actions">
                 <a class="nav-link primary" href="#workspace">回到工作区</a>
                 <a class="nav-link" href="./1.txt" target="_blank" rel="noreferrer">查看原始文本</a>
-            </div>
-        </section>
-
-        <section class="nav-panel">
-            <h3 style="font-size: 1.1rem;">遮挡设置</h3>
-            <p style="margin-top: 10px;">重复点击同一个间隔按钮，会自动切换不同偏移形态。</p>
-            <div class="interval-grid">
-                <button class="interval-btn active" type="button" data-interval="1">间隔 1</button>
-                <button class="interval-btn" type="button" data-interval="2">间隔 2</button>
-                <button class="interval-btn" type="button" data-interval="3">间隔 3</button>
-                <button class="interval-btn" type="button" data-interval="4">间隔 4</button>
-            </div>
-        </section>
-
-        <section class="nav-panel">
-            <h3 style="font-size: 1.1rem;">快捷操作</h3>
-            <p style="margin-top: 10px;">复制、导出等操作也收进菜单，主画面保持专注。</p>
-            <div class="action-grid">
-                <button class="action-btn primary" type="button" id="copyBtn">复制结果</button>
-                <button class="action-btn" type="button" id="exportCurrentBtn">导出当前</button>
-                <button class="action-btn" type="button" id="exportAllBtn">导出全部形态</button>
             </div>
         </section>
 
@@ -701,9 +784,33 @@
                 <div>
                     <span class="eyebrow">遮挡预览</span>
                     <h2 style="margin-top: 10px; font-size: clamp(1.55rem, 3vw, 2.15rem);">实时结果</h2>
-                    <p>这里只保留核心输出，统计与操作已经移动到导航菜单里。</p>
+                    <p>遮挡设置和快捷操作已经放回这里，方便边看结果边调整。</p>
                 </div>
                 <span class="card-pill">常驻显示</span>
+            </div>
+            <div class="preview-controls">
+                <span class="eyebrow">主操作区</span>
+                <div class="preview-controls-grid">
+                    <section class="control-panel">
+                        <h3>遮挡设置</h3>
+                        <p>重复点击同一个间隔按钮，会自动轮换不同偏移形态。</p>
+                        <div class="interval-grid">
+                            <button class="interval-btn active" type="button" data-interval="1">间隔 1</button>
+                            <button class="interval-btn" type="button" data-interval="2">间隔 2</button>
+                            <button class="interval-btn" type="button" data-interval="3">间隔 3</button>
+                            <button class="interval-btn" type="button" data-interval="4">间隔 4</button>
+                        </div>
+                    </section>
+                    <section class="control-panel">
+                        <h3>快捷操作</h3>
+                        <p>复制和导出放在预览区上方，手机和桌面都能更顺手地操作。</p>
+                        <div class="action-grid">
+                            <button class="action-btn primary" type="button" id="copyBtn">复制结果</button>
+                            <button class="action-btn" type="button" id="exportCurrentBtn">导出当前</button>
+                            <button class="action-btn" type="button" id="exportAllBtn">导出全部形态</button>
+                        </div>
+                    </section>
+                </div>
             </div>
             <div class="output" id="outputText"></div>
             <p class="preview-note" id="outputHint">页面加载完成后会自动显示处理结果。</p>

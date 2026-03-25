@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>中文间隔遮挡工具（增强版）</title>
+<title>中文间隔遮挡工具（GitHub Pages版）</title>
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -13,7 +13,7 @@
     }
     textarea {
         width: 100%;
-        height: 120px;
+        height: 140px;
         font-size: 16px;
         padding: 10px;
         margin-bottom: 20px;
@@ -37,11 +37,9 @@
 </head>
 <body>
 
-<h2>中文间隔遮挡工具（增强版）</h2>
+<h2>中文间隔遮挡工具（GitHub Pages版）</h2>
 
-<textarea id="inputText">
-今天是个好日子，我们很开心，一起去公园散步吧！
-</textarea>
+<textarea id="inputText" placeholder="正在加载 1.txt..."></textarea>
 
 <div class="buttons">
     <button onclick="setIntervalMask(1)">间隔1</button>
@@ -62,22 +60,16 @@
 let currentInterval = 1;
 let offset = 0;
 
-// 判断中文
+// =======================
+// 🔹 判断中文
+// =======================
 function isChinese(char) {
     return /[\u4e00-\u9fa5]/.test(char);
 }
 
-function setIntervalMask(n) {
-    if (currentInterval === n) {
-        offset = (offset + 1) % (2 * n);
-    } else {
-        currentInterval = n;
-        offset = 0;
-    }
-    processText();
-}
-
-// 核心处理函数（支持指定 offset）
+// =======================
+// 🔹 核心生成
+// =======================
 function generateText(interval, off) {
     const input = document.getElementById("inputText").value;
     let result = "";
@@ -99,29 +91,44 @@ function generateText(interval, off) {
 }
 
 function processText() {
-    const result = generateText(currentInterval, offset);
-    document.getElementById("outputText").innerText = result;
+    document.getElementById("outputText").innerText =
+        generateText(currentInterval, offset);
 }
 
-// ✅ 复制
+// =======================
+// 🔹 按钮逻辑
+// =======================
+function setIntervalMask(n) {
+    if (currentInterval === n) {
+        offset = (offset + 1) % (2 * n);
+    } else {
+        currentInterval = n;
+        offset = 0;
+    }
+    processText();
+}
+
+// =======================
+// 🔹 复制
+// =======================
 function copyResult() {
     const text = document.getElementById("outputText").innerText;
     navigator.clipboard.writeText(text).then(() => {
-        alert("已复制到剪贴板！");
+        alert("已复制！");
     });
 }
 
-// ✅ 导出
+// =======================
+// 🔹 导出
+// =======================
 function exportTXT(allVariants) {
     let content = "";
 
     if (allVariants) {
-        // 导出所有轮换
         for (let i = 0; i < 2 * currentInterval; i++) {
             content += generateText(currentInterval, i) + "\n\n";
         }
     } else {
-        // 仅当前
         content = generateText(currentInterval, offset);
     }
 
@@ -132,11 +139,30 @@ function exportTXT(allVariants) {
     link.click();
 }
 
-// 初始化
-processText();
+// =======================
+// 🔹 自动加载 1.txt（关键）
+// =======================
+async function loadDefaultTXT() {
+    try {
+        const response = await fetch("./1.txt"); // ✅ GitHub Pages正确路径
+        if (!response.ok) throw new Error("加载失败");
 
-// 输入实时更新
+        const text = await response.text();
+        document.getElementById("inputText").value = text;
+        processText();
+    } catch (e) {
+        document.getElementById("inputText").value =
+            "⚠️ 未找到 1.txt，请确认文件已上传到仓库根目录";
+    }
+}
+
+// =======================
+// 初始化
+// =======================
 document.getElementById("inputText").addEventListener("input", processText);
+
+// 页面加载时执行
+loadDefaultTXT();
 </script>
 
 </body>

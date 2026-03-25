@@ -2,168 +2,809 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>中文间隔遮挡工具（GitHub Pages版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中文间隔遮挡工具</title>
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        max-width: 900px;
-        margin: 40px auto;
-        padding: 20px;
-        background: #f5f5f5;
+    :root {
+        --bg: #f3efe7;
+        --panel: rgba(255, 252, 247, 0.86);
+        --panel-strong: #fffdf8;
+        --text: #1f2a24;
+        --muted: #5c695f;
+        --line: rgba(60, 87, 71, 0.16);
+        --accent: #235843;
+        --accent-soft: #d9ecdc;
+        --accent-strong: #143c2e;
+        --highlight: #c9783f;
+        --shadow: 0 24px 60px rgba(33, 52, 42, 0.14);
+        --radius-xl: 28px;
+        --radius-lg: 20px;
+        --radius-md: 16px;
+        --radius-sm: 12px;
     }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
+        color: var(--text);
+        background:
+            radial-gradient(circle at top left, rgba(161, 205, 170, 0.35), transparent 28%),
+            radial-gradient(circle at top right, rgba(213, 147, 92, 0.22), transparent 26%),
+            linear-gradient(180deg, #f7f3ec 0%, #efe7db 100%);
+    }
+
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image:
+            linear-gradient(rgba(35, 88, 67, 0.045) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(35, 88, 67, 0.045) 1px, transparent 1px);
+        background-size: 24px 24px;
+        mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 72%);
+    }
+
+    .page {
+        position: relative;
+        width: min(1200px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 48px;
+    }
+
+    .hero {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 24px;
+        align-items: stretch;
+        margin-bottom: 24px;
+    }
+
+    .hero-card,
+    .note-card,
+    .editor-card,
+    .preview-card,
+    .tips-card {
+        position: relative;
+        overflow: hidden;
+        background: var(--panel);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow);
+    }
+
+    .hero-card {
+        padding: 32px;
+    }
+
+    .hero-card::after,
+    .note-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -60px -90px auto;
+        width: 220px;
+        height: 220px;
+        background: radial-gradient(circle, rgba(201, 120, 63, 0.18), transparent 68%);
+        transform: rotate(18deg);
+    }
+
+    .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(35, 88, 67, 0.08);
+        color: var(--accent);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+    }
+
+    h1,
+    h2,
+    h3 {
+        margin: 0;
+        font-family: "STZhongsong", "Noto Serif SC", "Source Han Serif SC", serif;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    h1 {
+        margin-top: 18px;
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        line-height: 1.08;
+    }
+
+    .hero-copy {
+        margin: 16px 0 24px;
+        max-width: 44em;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.75;
+    }
+
+    .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .chip-link,
+    .action-btn,
+    .interval-btn {
+        appearance: none;
+        border: 0;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    .chip-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 18px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #f9f5ee;
+        text-decoration: none;
+        box-shadow: 0 14px 28px rgba(35, 88, 67, 0.24);
+    }
+
+    .chip-link.secondary {
+        background: rgba(35, 88, 67, 0.08);
+        color: var(--accent-strong);
+        box-shadow: none;
+    }
+
+    .chip-link:hover,
+    .action-btn:hover,
+    .interval-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .note-card {
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 18px;
+    }
+
+    .note-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .metric {
+        padding: 16px;
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.58);
+        border: 1px solid rgba(35, 88, 67, 0.08);
+    }
+
+    .metric-label {
+        display: block;
+        color: var(--muted);
+        font-size: 0.84rem;
+        margin-bottom: 8px;
+    }
+
+    .metric strong {
+        font-size: clamp(1.3rem, 3vw, 2rem);
+        font-weight: 700;
+    }
+
+    .metric small {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        line-height: 1.5;
+    }
+
+    .workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 0.88fr);
+        gap: 24px;
+        align-items: start;
+    }
+
+    .editor-card,
+    .preview-card,
+    .tips-card {
+        padding: 24px;
+    }
+
+    .section-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .section-head p,
+    .tips-card p,
+    .status-line,
+    .helper {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.68;
+    }
+
+    .pill {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: rgba(35, 88, 67, 0.08);
+        color: var(--accent);
+        font-size: 0.86rem;
+    }
+
     textarea {
         width: 100%;
-        height: 140px;
-        font-size: 16px;
-        padding: 10px;
-        margin-bottom: 20px;
+        min-height: 380px;
+        resize: vertical;
+        border: 1px solid rgba(35, 88, 67, 0.12);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--text);
+        font: 500 16px/1.8 "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", sans-serif;
+        outline: none;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
-    .buttons button {
-        margin: 5px;
-        padding: 10px 15px;
-        font-size: 16px;
-        cursor: pointer;
+
+    textarea:focus {
+        border-color: rgba(35, 88, 67, 0.36);
+        box-shadow: 0 0 0 4px rgba(35, 88, 67, 0.08);
+        background: #fffefb;
     }
+
+    .control-group {
+        margin-top: 18px;
+    }
+
+    .group-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 12px;
+        color: var(--muted);
+        font-size: 0.94rem;
+    }
+
+    .interval-grid,
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .action-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .interval-btn,
+    .action-btn {
+        min-height: 52px;
+        padding: 12px 14px;
+        border-radius: var(--radius-md);
+        font-size: 0.96rem;
+        font-weight: 600;
+    }
+
+    .interval-btn {
+        background: rgba(35, 88, 67, 0.07);
+        color: var(--accent-strong);
+    }
+
+    .interval-btn.active {
+        background: linear-gradient(135deg, var(--accent) 0%, #3a7b5f 100%);
+        color: #fffaf1;
+        box-shadow: 0 16px 32px rgba(35, 88, 67, 0.26);
+    }
+
+    .action-btn {
+        background: rgba(255, 255, 255, 0.8);
+        color: var(--text);
+        border: 1px solid rgba(35, 88, 67, 0.12);
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, #c9783f 0%, #b06032 100%);
+        color: #fff8ef;
+        border-color: transparent;
+        box-shadow: 0 16px 32px rgba(182, 96, 50, 0.22);
+    }
+
+    .status-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+    }
+
+    .status-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 38px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: rgba(35, 88, 67, 0.07);
+        color: var(--accent-strong);
+        font-size: 0.9rem;
+    }
+
     .output {
-        margin-top: 20px;
-        padding: 15px;
-        background: white;
-        min-height: 60px;
-        font-size: 20px;
-        border: 1px solid #ccc;
+        min-height: 420px;
+        padding: 22px;
+        border-radius: var(--radius-lg);
+        background:
+            linear-gradient(180deg, rgba(255, 253, 248, 0.96) 0%, rgba(250, 247, 241, 0.94) 100%);
+        border: 1px solid rgba(35, 88, 67, 0.12);
+        font-family: "STSong", "Songti SC", "Noto Serif SC", serif;
+        font-size: clamp(1.05rem, 1.2vw + 0.88rem, 1.38rem);
+        line-height: 1.95;
         white-space: pre-wrap;
+        word-break: break-word;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    }
+
+    .preview-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 18px 0;
+    }
+
+    .preview-meta .metric {
+        background: rgba(35, 88, 67, 0.05);
+    }
+
+    .tips-card {
+        margin-top: 24px;
+    }
+
+    .tips-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+    }
+
+    .tip {
+        padding: 18px;
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(35, 88, 67, 0.08);
+    }
+
+    .tip strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 1rem;
+    }
+
+    .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        z-index: 10;
+        transform: translate(-50%, 24px);
+        min-width: min(360px, calc(100vw - 32px));
+        padding: 14px 18px;
+        border-radius: 16px;
+        background: rgba(20, 60, 46, 0.94);
+        color: #fdf8f1;
+        text-align: center;
+        box-shadow: 0 18px 34px rgba(20, 60, 46, 0.26);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .toast.visible {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 960px) {
+        .hero,
+        .workspace,
+        .tips-list {
+            grid-template-columns: 1fr;
+        }
+
+        .page {
+            width: min(100% - 20px, 1200px);
+            padding-top: 20px;
+        }
+
+        .hero-card,
+        .note-card,
+        .editor-card,
+        .preview-card,
+        .tips-card {
+            border-radius: 24px;
+        }
+
+        textarea,
+        .output {
+            min-height: 320px;
+        }
+    }
+
+    @media (max-width: 680px) {
+        body {
+            background:
+                radial-gradient(circle at top left, rgba(161, 205, 170, 0.28), transparent 34%),
+                linear-gradient(180deg, #f8f4ee 0%, #f0e8dd 100%);
+        }
+
+        .hero-card,
+        .note-card,
+        .editor-card,
+        .preview-card,
+        .tips-card {
+            padding: 20px;
+        }
+
+        .section-head,
+        .group-label {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .interval-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .action-grid,
+        .preview-meta,
+        .note-grid {
+            grid-template-columns: 1fr;
+        }
+
+        textarea {
+            min-height: 280px;
+            padding: 16px;
+            font-size: 15px;
+        }
+
+        .output {
+            min-height: 280px;
+            padding: 18px;
+            font-size: 1.06rem;
+        }
+
+        .chip-link,
+        .interval-btn,
+        .action-btn {
+            min-height: 48px;
+        }
     }
 </style>
 </head>
 <body>
+<div class="page">
+    <section class="hero">
+        <div class="hero-card">
+            <span class="eyebrow">TEXT MASK LAB</span>
+            <h1>中文间隔遮挡工具</h1>
+            <p class="hero-copy">
+                这个页面会自动读取同目录下的 <code>1.txt</code>，按你选择的节奏对中文字符做“显示 / 遮挡”切换，
+                适合做背词、台词分段记忆、逐步回忆训练，也能直接复制或导出当前结果。
+            </p>
+            <div class="hero-actions">
+                <a class="chip-link" href="#workspace">开始使用</a>
+                <a class="chip-link secondary" href="./1.txt" target="_blank" rel="noreferrer">查看原始文本</a>
+            </div>
+        </div>
 
-<h2>中文间隔遮挡工具（GitHub Pages版）</h2>
+        <aside class="note-card">
+            <div>
+                <span class="eyebrow">使用方式</span>
+                <h2 style="margin-top: 14px; font-size: clamp(1.5rem, 3vw, 2.2rem);">先选间隔，再循环切换偏移</h2>
+                <p class="hero-copy" style="margin: 14px 0 0;">
+                    点击同一个“间隔”按钮时，页面会自动切换不同遮挡形态；这样不用换页面，就能把同一段内容从不同位置开始练习。
+                </p>
+            </div>
+            <div class="note-grid">
+                <div class="metric">
+                    <span class="metric-label">默认输入</span>
+                    <strong>1.txt</strong>
+                    <small>页面加载后会自动尝试读取同目录文本。</small>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">导出方式</span>
+                    <strong>.txt</strong>
+                    <small>支持单个当前版本，或一次导出全部形态。</small>
+                </div>
+            </div>
+        </aside>
+    </section>
 
-<textarea id="inputText" placeholder="正在加载 1.txt..."></textarea>
+    <section class="workspace" id="workspace">
+        <div class="editor-card">
+            <div class="section-head">
+                <div>
+                    <h2 style="font-size: clamp(1.45rem, 3vw, 2rem);">输入文本</h2>
+                    <p>你可以直接编辑、粘贴或替换内容，输出区会实时更新。</p>
+                </div>
+                <span class="pill" id="loadStatus">正在加载默认文本...</span>
+            </div>
 
-<div class="buttons">
-    <button onclick="setIntervalMask(1)">间隔1</button>
-    <button onclick="setIntervalMask(2)">间隔2</button>
-    <button onclick="setIntervalMask(3)">间隔3</button>
-    <button onclick="setIntervalMask(4)">间隔4</button>
+            <textarea id="inputText" placeholder="正在加载 1.txt..."></textarea>
+
+            <div class="control-group">
+                <div class="group-label">
+                    <span>选择遮挡节奏</span>
+                    <span class="helper">重复点击同一个按钮，会轮换不同偏移形态</span>
+                </div>
+                <div class="interval-grid">
+                    <button class="interval-btn active" type="button" data-interval="1">间隔 1</button>
+                    <button class="interval-btn" type="button" data-interval="2">间隔 2</button>
+                    <button class="interval-btn" type="button" data-interval="3">间隔 3</button>
+                    <button class="interval-btn" type="button" data-interval="4">间隔 4</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="group-label">
+                    <span>快捷操作</span>
+                    <span class="helper">手机上按钮更大，方便点按；桌面端则保持并排高效操作。</span>
+                </div>
+                <div class="action-grid">
+                    <button class="action-btn primary" type="button" id="copyBtn">复制结果</button>
+                    <button class="action-btn" type="button" id="exportCurrentBtn">导出当前</button>
+                    <button class="action-btn" type="button" id="exportAllBtn">导出全部形态</button>
+                </div>
+            </div>
+
+            <div class="status-strip">
+                <span class="status-chip" id="intervalStatus">当前间隔：1</span>
+                <span class="status-chip" id="offsetStatus">当前偏移：0 / 1</span>
+                <span class="status-chip" id="variantStatus">可切换形态：2 种</span>
+            </div>
+        </div>
+
+        <div>
+            <section class="preview-card">
+                <div class="section-head">
+                    <div>
+                        <h2 style="font-size: clamp(1.45rem, 3vw, 2rem);">遮挡预览</h2>
+                        <p>输出中仅遮挡中文字符，标点、空格和非中文内容会保持原样。</p>
+                    </div>
+                    <span class="pill">实时生成</span>
+                </div>
+
+                <div class="preview-meta">
+                    <div class="metric">
+                        <span class="metric-label">中文字符数</span>
+                        <strong id="chineseCount">0</strong>
+                        <small>当前输入里识别到的中文总量。</small>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">已遮挡字符数</span>
+                        <strong id="maskedCount">0</strong>
+                        <small>方便快速判断当前练习难度。</small>
+                    </div>
+                </div>
+
+                <div class="output" id="outputText"></div>
+                <p class="status-line" style="margin-top: 14px;" id="outputHint">
+                    页面加载完成后会自动显示处理结果。
+                </p>
+            </section>
+
+            <section class="tips-card">
+                <h3 style="font-size: 1.35rem;">这个工具现在在做什么</h3>
+                <p style="margin-top: 10px;">
+                    它本质上是一个“按固定节奏隐藏中文字符”的练习页。你选定间隔后，系统会在中文字符序列里保留一段、遮挡一段；
+                    当你再次点击同一个间隔时，就会把起始位置往后挪，得到另一种训练版本。
+                </p>
+                <div class="tips-list">
+                    <div class="tip">
+                        <strong>适合记忆练习</strong>
+                        <span>背稿、背词、逐句回忆时很好用，不必手动改文档。</span>
+                    </div>
+                    <div class="tip">
+                        <strong>适合手机操作</strong>
+                        <span>按钮和间距已经放大，单手点击也更稳。</span>
+                    </div>
+                    <div class="tip">
+                        <strong>适合桌面查看</strong>
+                        <span>输入与预览分栏排布，改字和观察结果能同时进行。</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
 </div>
 
-<div class="buttons">
-    <button onclick="copyResult()">复制结果</button>
-    <button onclick="exportTXT(false)">导出当前</button>
-    <button onclick="exportTXT(true)">导出全部形态</button>
-</div>
-
-<div class="output" id="outputText"></div>
+<div class="toast" id="toast"></div>
 
 <script>
 let currentInterval = 1;
 let offset = 0;
+let toastTimer = null;
 
-// =======================
-// 🔹 判断中文
-// =======================
+const inputText = document.getElementById("inputText");
+const outputText = document.getElementById("outputText");
+const loadStatus = document.getElementById("loadStatus");
+const intervalStatus = document.getElementById("intervalStatus");
+const offsetStatus = document.getElementById("offsetStatus");
+const variantStatus = document.getElementById("variantStatus");
+const chineseCount = document.getElementById("chineseCount");
+const maskedCount = document.getElementById("maskedCount");
+const outputHint = document.getElementById("outputHint");
+const toast = document.getElementById("toast");
+const intervalButtons = Array.from(document.querySelectorAll(".interval-btn"));
+
 function isChinese(char) {
     return /[\u4e00-\u9fa5]/.test(char);
 }
 
-// =======================
-// 🔹 核心生成
-// =======================
+function showToast(message) {
+    window.clearTimeout(toastTimer);
+    toast.textContent = message;
+    toast.classList.add("visible");
+    toastTimer = window.setTimeout(() => {
+        toast.classList.remove("visible");
+    }, 2200);
+}
+
+function updateIntervalButtons() {
+    intervalButtons.forEach((button) => {
+        const buttonInterval = Number(button.dataset.interval);
+        button.classList.toggle("active", buttonInterval === currentInterval);
+    });
+}
+
+function updateStatus(totalChinese, maskedChinese) {
+    const variantTotal = currentInterval * 2;
+    intervalStatus.innerText = `当前间隔：${currentInterval}`;
+    offsetStatus.innerText = `当前偏移：${offset} / ${variantTotal - 1}`;
+    variantStatus.innerText = `可切换形态：${variantTotal} 种`;
+    chineseCount.innerText = totalChinese;
+    maskedCount.innerText = maskedChinese;
+    outputHint.innerText = totalChinese === 0
+        ? "当前内容里没有检测到中文字符，因此不会出现遮挡效果。"
+        : `当前方案会遮挡 ${maskedChinese} 个中文字符，适合做分段回忆练习。`;
+}
+
 function generateText(interval, off) {
-    const input = document.getElementById("inputText").value;
+    const input = inputText.value;
     let result = "";
     let chineseIndex = 0;
+    let maskedChinese = 0;
 
-    for (let char of input) {
+    for (const char of input) {
         if (isChinese(char)) {
             if ((chineseIndex + off) % (2 * interval) < interval) {
                 result += char;
             } else {
-                result += "⬛️";
+                result += "⬛";
+                maskedChinese++;
             }
             chineseIndex++;
         } else {
             result += char;
         }
     }
-    return result;
+
+    return {
+        result,
+        totalChinese: chineseIndex,
+        maskedChinese
+    };
 }
 
 function processText() {
-    document.getElementById("outputText").innerText =
-        generateText(currentInterval, offset);
+    const generated = generateText(currentInterval, offset);
+    outputText.innerText = generated.result;
+    updateStatus(generated.totalChinese, generated.maskedChinese);
+    updateIntervalButtons();
 }
 
-// =======================
-// 🔹 按钮逻辑
-// =======================
-function setIntervalMask(n) {
-    if (currentInterval === n) {
-        offset = (offset + 1) % (2 * n);
+function setIntervalMask(interval) {
+    if (currentInterval === interval) {
+        offset = (offset + 1) % (2 * interval);
     } else {
-        currentInterval = n;
+        currentInterval = interval;
         offset = 0;
     }
+
     processText();
 }
 
-// =======================
-// 🔹 复制
-// =======================
-function copyResult() {
-    const text = document.getElementById("outputText").innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        alert("已复制！");
-    });
+async function copyResult() {
+    const text = outputText.innerText;
+
+    if (!text) {
+        showToast("当前没有可复制的内容。");
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast("结果已复制到剪贴板。");
+    } catch (error) {
+        showToast("复制失败，请手动选择文本复制。");
+    }
 }
 
-// =======================
-// 🔹 导出
-// =======================
 function exportTXT(allVariants) {
     let content = "";
 
     if (allVariants) {
         for (let i = 0; i < 2 * currentInterval; i++) {
-            content += generateText(currentInterval, i) + "\n\n";
+            content += generateText(currentInterval, i).result + "\n\n";
         }
     } else {
-        content = generateText(currentInterval, offset);
+        content = generateText(currentInterval, offset).result;
     }
 
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `mask_interval_${currentInterval}.txt`;
+    link.download = allVariants
+        ? `mask_interval_${currentInterval}_all.txt`
+        : `mask_interval_${currentInterval}_current.txt`;
     link.click();
+    URL.revokeObjectURL(link.href);
+
+    showToast(allVariants ? "已导出全部形态。" : "已导出当前形态。");
 }
 
-// =======================
-// 🔹 自动加载 1.txt（关键）
-// =======================
 async function loadDefaultTXT() {
     try {
-        const response = await fetch("./1.txt"); // ✅ GitHub Pages正确路径
-        if (!response.ok) throw new Error("加载失败");
+        const response = await fetch("./1.txt");
+        if (!response.ok) {
+            throw new Error("加载失败");
+        }
 
         const text = await response.text();
-        document.getElementById("inputText").value = text;
+        inputText.value = text;
+        loadStatus.innerText = "已加载默认文本";
         processText();
-    } catch (e) {
-        document.getElementById("inputText").value =
-            "⚠️ 未找到 1.txt，请确认文件已上传到仓库根目录";
+    } catch (error) {
+        inputText.value = "⚠️ 未找到 1.txt，请确认文件已上传到当前目录。";
+        loadStatus.innerText = "默认文本加载失败";
+        processText();
     }
 }
 
-// =======================
-// 初始化
-// =======================
-document.getElementById("inputText").addEventListener("input", processText);
+intervalButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        setIntervalMask(Number(button.dataset.interval));
+    });
+});
 
-// 页面加载时执行
+document.getElementById("copyBtn").addEventListener("click", copyResult);
+document.getElementById("exportCurrentBtn").addEventListener("click", () => exportTXT(false));
+document.getElementById("exportAllBtn").addEventListener("click", () => exportTXT(true));
+inputText.addEventListener("input", processText);
+
+processText();
 loadDefaultTXT();
 </script>
-
 </body>
 </html>

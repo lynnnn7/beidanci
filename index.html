@@ -43,6 +43,10 @@
             linear-gradient(180deg, #f7f2eb 0%, var(--bg) 100%);
     }
 
+    body.mobile-practice-mode {
+        overflow-x: hidden;
+    }
+
     body::before {
         content: "";
         position: fixed;
@@ -845,6 +849,62 @@
         .preview-controls .interval-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+
+        body.mobile-practice-mode .page {
+            width: min(100% - 12px, 1280px);
+            padding: 12px 0 22px;
+        }
+
+        body.mobile-practice-mode .workspace {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        body.mobile-practice-mode .editor-card {
+            display: none;
+        }
+
+        body.mobile-practice-mode .preview-card {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            min-height: calc(100dvh - 98px);
+            padding: 18px;
+        }
+
+        body.mobile-practice-mode .preview-card .card-head {
+            margin-bottom: 12px;
+        }
+
+        body.mobile-practice-mode .preview-card .card-head p,
+        body.mobile-practice-mode .preview-card .card-pill {
+            display: none;
+        }
+
+        body.mobile-practice-mode .output {
+            min-height: 52dvh;
+            font-size: clamp(1.22rem, 4.8vw, 1.55rem);
+            line-height: 2.08;
+            border-radius: 22px;
+        }
+
+        body.mobile-practice-mode .preview-controls {
+            position: sticky;
+            bottom: 10px;
+            z-index: 6;
+            margin-bottom: 0;
+            background: rgba(255, 251, 246, 0.92);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 16px 32px rgba(35, 88, 67, 0.14);
+        }
+
+        body.mobile-practice-mode .preview-controls-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        body.mobile-practice-mode .preview-controls .action-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 560px) {
@@ -936,6 +996,44 @@
         .floating-toggle-btn {
             right: 12px;
             bottom: 84px;
+        }
+
+        body.mobile-practice-mode .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 32;
+        }
+
+        body.mobile-practice-mode .topbar-inner {
+            min-height: 64px;
+        }
+
+        body.mobile-practice-mode .preview-card {
+            min-height: calc(100dvh - 84px);
+            padding: 14px;
+        }
+
+        body.mobile-practice-mode .preview-controls {
+            padding: 12px;
+            border-radius: 20px;
+        }
+
+        body.mobile-practice-mode .preview-controls .eyebrow,
+        body.mobile-practice-mode .preview-controls .control-panel > p,
+        body.mobile-practice-mode .preview-controls .field-help {
+            display: none;
+        }
+
+        body.mobile-practice-mode .preview-controls .action-grid,
+        body.mobile-practice-mode .preview-controls .interval-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        body.mobile-practice-mode .output {
+            min-height: 56dvh;
+            padding: 16px;
+            font-size: clamp(1.16rem, 5vw, 1.42rem);
+            line-height: 2;
         }
     }
 </style>
@@ -1157,6 +1255,10 @@
                             <input type="checkbox" id="floatingToggleEnabled">
                             <span>启用悬浮按钮，点击即可在遮挡 / 原文之间切换</span>
                         </label>
+                        <label class="toggle-option" for="mobilePracticeEnabled">
+                            <input type="checkbox" id="mobilePracticeEnabled">
+                            <span>手机练习模式：小屏时切到大字号、全屏预览和底部操作区</span>
+                        </label>
                     </section>
                 </div>
             </div>
@@ -1208,6 +1310,7 @@ const maskRatioRange = document.getElementById("maskRatioRange");
 const maskRatioValue = document.getElementById("maskRatioValue");
 const rerollRandomBtn = document.getElementById("rerollRandomBtn");
 const floatingToggleEnabled = document.getElementById("floatingToggleEnabled");
+const mobilePracticeEnabled = document.getElementById("mobilePracticeEnabled");
 const floatingToggleBtn = document.getElementById("floatingToggleBtn");
 const historyList = document.getElementById("historyList");
 const historyEmpty = document.getElementById("historyEmpty");
@@ -1343,6 +1446,7 @@ function buildHistoryEntry() {
         maskPatternSelectValue: maskPatternSelect.value,
         maskRatioRangeValue: maskRatioRange.value,
         floatingToggleEnabled: floatingToggleEnabled.checked,
+        mobilePracticeEnabled: mobilePracticeEnabled.checked,
         previewMode
     };
 }
@@ -1410,6 +1514,7 @@ function saveCurrentToHistory() {
         && latestEntry.maskPatternSelectValue === nextEntry.maskPatternSelectValue
         && latestEntry.maskRatioRangeValue === nextEntry.maskRatioRangeValue
         && latestEntry.floatingToggleEnabled === nextEntry.floatingToggleEnabled
+        && latestEntry.mobilePracticeEnabled === nextEntry.mobilePracticeEnabled
         && latestEntry.previewMode === nextEntry.previewMode;
 
     historyEntries = isSameAsLatest
@@ -1434,11 +1539,13 @@ function applyHistoryEntry(entry) {
     maskPatternSelect.value = entry.maskPatternSelectValue || "interval";
     maskRatioRange.value = entry.maskRatioRangeValue || "50";
     floatingToggleEnabled.checked = Boolean(entry.floatingToggleEnabled);
+    mobilePracticeEnabled.checked = Boolean(entry.mobilePracticeEnabled);
     previewMode = entry.previewMode === "original" ? "original" : "masked";
     updateMaskToken();
     updateMaskPattern();
     updateMaskRatio();
     updateFloatingToggleVisibility();
+    updateMobilePracticeMode();
     processText();
 }
 
@@ -1790,6 +1897,14 @@ function updateFloatingToggleVisibility() {
     }
 }
 
+function updateMobilePracticeMode(showFeedback) {
+    document.body.classList.toggle("mobile-practice-mode", mobilePracticeEnabled.checked);
+
+    if (showFeedback) {
+        showToast(mobilePracticeEnabled.checked ? "已开启手机练习模式。" : "已退出手机练习模式。");
+    }
+}
+
 async function loadDefaultTXT() {
     try {
         const response = await fetch("./1.txt");
@@ -1837,6 +1952,7 @@ rerollRandomBtn.addEventListener("click", () => {
     showToast("已生成新的随机遮挡版本。");
 });
 floatingToggleEnabled.addEventListener("change", updateFloatingToggleVisibility);
+mobilePracticeEnabled.addEventListener("change", () => updateMobilePracticeMode(true));
 floatingToggleBtn.addEventListener("click", () => {
     previewMode = previewMode === "masked" ? "original" : "masked";
     processText();
@@ -1872,6 +1988,7 @@ loadHistoryEntries();
 updateMaskToken();
 updateMaskPattern();
 updateMaskRatio();
+updateMobilePracticeMode();
 processText();
 loadDefaultTXT();
 </script>
